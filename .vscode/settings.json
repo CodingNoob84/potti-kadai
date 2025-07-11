@@ -1,0 +1,24 @@
+{
+  // Format files on save
+  "editor.formatOnSave": true,
+
+  // Organize imports on save (removes unused + sorts)
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "always",
+    "source.fixAll": "always"
+  },
+
+  // Optional: Apply only to specific languages like TypeScript or JavaScript
+  "[typescript]": {
+    "editor.formatOnSave": true
+  },
+  "[javascript]": {
+    "editor.formatOnSave": true
+  },
+  "[typescriptreact]": {
+    "editor.formatOnSave": true
+  },
+  "[javascriptreact]": {
+    "editor.formatOnSave": true
+  }
+}
