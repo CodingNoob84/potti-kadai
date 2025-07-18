@@ -1,13 +1,20 @@
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import AdminSidebar from "@/components/layout/dashboard-sidebar";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { auth } from "@/lib/auth";
+import { Menu } from "lucide-react";
+import { headers } from "next/headers";
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const headersList = await headers();
+  const session = await auth.api.getSession({
+    headers: headersList,
+  });
+  console.log("session :", session);
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-background">
       {/* Mobile Navbar */}
