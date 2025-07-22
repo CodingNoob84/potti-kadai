@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getProductById } from "@/server/products";
+import { useQuery } from "@tanstack/react-query";
 import {
   Heart,
   Minus,
@@ -18,75 +20,78 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useState } from "react";
 
-const product = {
-  id: 1,
-  name: "Classic Cotton T-Shirt",
-  price: 599,
-  originalPrice: 799,
-  rating: 4.5,
-  reviews: 128,
-  description:
-    "A comfortable and stylish cotton t-shirt perfect for everyday wear. Made from 100% premium cotton with a soft feel and durable construction.",
-  images: [
-    "/images/products/p_img2_1.png",
-    "/images/products/p_img2_2.png",
-    "/images/products/p_img2_3.png",
-    "/images/products/p_img2_4.png",
-  ],
-  sizes: ["S", "M", "L", "XL", "XXL"],
-  colors: ["Black", "White", "Navy", "Gray"],
-  inStock: true,
-  features: [
-    "100% Premium Cotton",
-    "Pre-shrunk fabric",
-    "Comfortable fit",
-    "Machine washable",
-    "Durable construction",
-  ],
+// Helper function to generate random rating between 3.5 and 5
+const getReviewRating = () => {
+  const rating = (Math.random() * 1.5 + 3.5).toFixed(1);
+  const reviews = Math.floor(Math.random() * 91) + 10;
+  return { rating, reviews };
 };
 
-const reviews = [
-  {
-    id: 1,
-    name: "Rajesh Kumar",
-    rating: 5,
-    date: "2024-01-15",
-    comment:
-      "Excellent quality t-shirt. Very comfortable and fits perfectly. Highly recommended!",
-  },
-  {
-    id: 2,
-    name: "Priya Sharma",
-    rating: 4,
-    date: "2024-01-10",
-    comment:
-      "Good quality fabric and nice fit. The color is exactly as shown in the picture.",
-  },
-  {
-    id: 3,
-    name: "Amit Singh",
-    rating: 5,
-    date: "2024-01-05",
-    comment:
-      "Great value for money. The t-shirt is soft and comfortable. Will definitely buy again.",
-  },
-];
-
 export default function ProductDetailPage() {
+  const params = useParams();
+  const productId = Number(params?.id);
+
+  const { data: product, isLoading } = useQuery({
+    queryKey: ["products", productId],
+    queryFn: () => getProductById(productId),
+    enabled: !!productId,
+  });
+
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
 
+  if (isLoading) {
+    return (
+      <div className="container px-4 py-6 sm:px-6 lg:px-8">
+        <div className="grid lg:grid-cols-5 gap-8">
+          {/* Image loading skeleton */}
+          <div className="space-y-3 col-span-2">
+            <div className="relative aspect-square overflow-hidden rounded-lg border bg-gray-50 animate-pulse" />
+            <div className="flex space-x-2 overflow-x-auto pb-1">
+              {[...Array(4)].map((_, i) => (
+                <div
+                  key={i}
+                  className="w-16 h-16 bg-gray-100 rounded-md animate-pulse"
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Details loading skeleton */}
+          <div className="space-y-5 col-span-3">
+            <div className="space-y-3">
+              <div className="h-8 w-3/4 bg-gray-100 rounded animate-pulse" />
+              <div className="h-4 w-1/2 bg-gray-100 rounded animate-pulse" />
+            </div>
+            <div className="h-4 w-full bg-gray-100 rounded animate-pulse" />
+            <div className="h-4 w-2/3 bg-gray-100 rounded animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return <div>Product not found</div>;
+  }
+
+  const { rating, reviews } = getReviewRating();
+  const discountPercentage =
+    product.discount?.type === "direct" ? product.discount.value : 0;
+  const discountedPrice =
+    product.price - (product.price * discountPercentage) / 100;
+
   const handleAddToCart = () => {
     if (!selectedSize || !selectedColor) {
       alert("Please select size and color");
       return;
     }
-    // Add to cart logic here
     console.log("Added to cart:", {
       product,
       selectedSize,
@@ -100,9 +105,14 @@ export default function ProductDetailPage() {
       alert("Please select size and color");
       return;
     }
-    // Buy now logic here
     console.log("Buy now:", { product, selectedSize, selectedColor, quantity });
   };
+
+  // Get all unique sizes from inventory
+  const allSizes = product.inventory.flatMap((color) =>
+    color.sizes.map((size) => size.name)
+  );
+  const uniqueSizes = [...new Set(allSizes)];
 
   return (
     <div className="container px-4 py-6 sm:px-6 lg:px-8">
@@ -116,34 +126,38 @@ export default function ProductDetailPage() {
           Products
         </Link>
         <span>/</span>
+        <Link
+          href={`/products/${product?.category
+            ?.toLowerCase()
+            .replace(/\s+/g, "-")}`}
+          className="hover:text-foreground"
+        >
+          {product.category}
+        </Link>
+        <span>/</span>
         <span className="text-foreground">{product.name}</span>
       </nav>
 
       <div className="grid lg:grid-cols-5 gap-8">
-        {/* Product Images - Compact Version */}
+        {/* Product Images */}
         <div className="space-y-3 col-span-2">
-          {/* Main Image - Smaller */}
+          {/* Main Image */}
           <div className="relative aspect-square overflow-hidden rounded-lg border bg-gray-50">
             <Image
-              src={product.images[selectedImage] || "/placeholder.svg"}
+              src={product.images[selectedImage]?.url || "/placeholder.svg"}
               alt={product.name}
               fill
               className="object-contain p-4"
               priority
             />
-            {product.originalPrice > product.price && (
+            {discountPercentage > 0 && (
               <Badge className="absolute top-3 left-3 bg-red-500">
-                {Math.round(
-                  ((product.originalPrice - product.price) /
-                    product.originalPrice) *
-                    100
-                )}
-                % OFF
+                {discountPercentage}% OFF
               </Badge>
             )}
           </div>
 
-          {/* Thumbnail Images - Compact */}
+          {/* Thumbnail Images */}
           <div className="flex space-x-2 overflow-x-auto pb-1">
             {product.images.map((image, index) => (
               <button
@@ -154,7 +168,7 @@ export default function ProductDetailPage() {
                 }`}
               >
                 <Image
-                  src={image || "/placeholder.svg"}
+                  src={image.url || "/placeholder.svg"}
                   alt={`${product.name} ${index + 1}`}
                   fill
                   className="object-cover"
@@ -174,47 +188,53 @@ export default function ProductDetailPage() {
                   <Star
                     key={i}
                     className={`h-4 w-4 ${
-                      i < Math.floor(product.rating)
+                      i < Math.floor(Number(rating))
                         ? "fill-yellow-400 text-yellow-400"
                         : "fill-muted text-muted-foreground"
                     }`}
                   />
                 ))}
                 <span className="ml-1 text-sm text-muted-foreground">
-                  {product.rating} ({product.reviews} reviews)
+                  {rating} ({reviews} reviews)
                 </span>
               </div>
             </div>
 
             <div className="flex items-center space-x-3 mb-4">
-              <span className="text-2xl font-bold">₹{product.price}</span>
-              {product.originalPrice > product.price && (
-                <span className="text-lg text-muted-foreground line-through">
-                  ₹{product.originalPrice}
-                </span>
+              {discountPercentage > 0 ? (
+                <>
+                  <span className="text-2xl font-bold">
+                    ₹{discountedPrice.toFixed(2)}
+                  </span>
+                  <span className="text-lg text-muted-foreground line-through">
+                    ₹{product.price}
+                  </span>
+                </>
+              ) : (
+                <span className="text-2xl font-bold">₹{product.price}</span>
               )}
             </div>
           </div>
 
           <p className="text-muted-foreground text-sm">{product.description}</p>
 
-          {/* Size Selection */}
-          <div className="pt-2">
-            <Label className="text-sm font-medium mb-2 block">Size</Label>
-            <RadioGroup value={selectedSize} onValueChange={setSelectedSize}>
+          {/* Color Selection */}
+          <div>
+            <Label className="text-sm font-medium mb-2 block">Color</Label>
+            <RadioGroup value={selectedColor} onValueChange={setSelectedColor}>
               <div className="flex flex-wrap gap-2">
-                {product.sizes.map((size) => (
-                  <div key={size}>
+                {product.inventory.map((color) => (
+                  <div key={color.colorId}>
                     <RadioGroupItem
-                      value={size}
-                      id={`size-${size}`}
+                      value={color.name}
+                      id={`color-${color.colorId}`}
                       className="peer sr-only"
                     />
                     <Label
-                      htmlFor={`size-${size}`}
-                      className="flex items-center justify-center w-10 h-10 text-sm border rounded-md cursor-pointer peer-checked:border-primary peer-checked:bg-primary/10 hover:border-primary/50"
+                      htmlFor={`color-${color.colorId}`}
+                      className="flex items-center justify-center px-3 py-1.5 text-sm border rounded-md cursor-pointer peer-checked:border-primary peer-checked:bg-primary/10 hover:border-primary/50"
                     >
-                      {size}
+                      {color.name}
                     </Label>
                   </div>
                 ))}
@@ -222,29 +242,31 @@ export default function ProductDetailPage() {
             </RadioGroup>
           </div>
 
-          {/* Color Selection */}
-          <div>
-            <Label className="text-sm font-medium mb-2 block">Color</Label>
-            <RadioGroup value={selectedColor} onValueChange={setSelectedColor}>
-              <div className="flex flex-wrap gap-2">
-                {product.colors.map((color) => (
-                  <div key={color}>
-                    <RadioGroupItem
-                      value={color}
-                      id={`color-${color}`}
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor={`color-${color}`}
-                      className="flex items-center justify-center px-3 py-1.5 text-sm border rounded-md cursor-pointer peer-checked:border-primary peer-checked:bg-primary/10 hover:border-primary/50"
-                    >
-                      {color}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </RadioGroup>
-          </div>
+          {/* Size Selection */}
+          {uniqueSizes.length > 0 && (
+            <div className="pt-2">
+              <Label className="text-sm font-medium mb-2 block">Size</Label>
+              <RadioGroup value={selectedSize} onValueChange={setSelectedSize}>
+                <div className="flex flex-wrap gap-2">
+                  {uniqueSizes.map((size) => (
+                    <div key={size}>
+                      <RadioGroupItem
+                        value={size}
+                        id={`size-${size}`}
+                        className="peer sr-only"
+                      />
+                      <Label
+                        htmlFor={`size-${size}`}
+                        className="flex items-center justify-center w-10 h-10 text-sm border rounded-md cursor-pointer peer-checked:border-primary peer-checked:bg-primary/10 hover:border-primary/50"
+                      >
+                        {size}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </RadioGroup>
+            </div>
+          )}
 
           {/* Quantity */}
           <div>
@@ -318,41 +340,47 @@ export default function ProductDetailPage() {
         <Tabs defaultValue="details" className="w-full">
           <TabsList className="grid w-full grid-cols-2 max-w-xs">
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="reviews">
-              Reviews ({product.reviews})
-            </TabsTrigger>
+            <TabsTrigger value="reviews">Reviews ({reviews})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="details" className="mt-4">
             <Card>
               <CardContent className="p-4">
-                <h3 className="font-medium mb-3">Product Features</h3>
-                <ul className="space-y-2 text-sm">
-                  {product.features.map((feature, index) => (
-                    <li key={index} className="flex items-start">
-                      <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-2"></span>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+                <h3 className="font-medium mb-3">Product Information</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Category</p>
+                    <p className="font-medium">{product.category}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Subcategory</p>
+                    <p className="font-medium">{product.subcategory}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Availability</p>
+                    <p className="font-medium">
+                      {product.isActive ? "In Stock" : "Out of Stock"}
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="reviews" className="mt-4">
             <div className="space-y-4">
-              {reviews.map((review) => (
-                <Card key={review.id}>
+              {[...Array(3)].map((_, i) => (
+                <Card key={i}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h4 className="font-medium">{review.name}</h4>
+                        <h4 className="font-medium">Customer {i + 1}</h4>
                         <div className="flex items-center mt-1">
-                          {[...Array(5)].map((_, i) => (
+                          {[...Array(5)].map((_, j) => (
                             <Star
-                              key={i}
+                              key={j}
                               className={`h-3 w-3 ${
-                                i < review.rating
+                                j < Math.floor(Math.random() * 2 + 3)
                                   ? "fill-yellow-400 text-yellow-400"
                                   : "fill-muted text-muted-foreground"
                               }`}
@@ -361,11 +389,11 @@ export default function ProductDetailPage() {
                         </div>
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {review.date}
+                        {new Date().toLocaleDateString()}
                       </span>
                     </div>
                     <p className="text-muted-foreground text-sm">
-                      {review.comment}
+                      This is a sample review for demonstration purposes.
                     </p>
                   </CardContent>
                 </Card>

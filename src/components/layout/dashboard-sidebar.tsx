@@ -60,7 +60,7 @@ const menuItems: MenuItem[] = [
       },
       {
         title: "Categories",
-        href: "/dashboard/categories",
+        href: "/dashboard/products/categories",
         icon: <FolderPlus className="h-4 w-4" />,
       },
     ],

@@ -26,6 +26,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { getAllProducts } from "@/server/products";
+import { useQuery } from "@tanstack/react-query";
 import { Edit, Eye, Plus, Search, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -35,98 +37,62 @@ type ProductType = {
   id: number;
   title: string;
   price: number;
-  originalPrice: number;
-  stock: number;
   category: string;
   subcategory: string;
-  isActive: boolean;
-  image: string;
-  colors: string[];
-  sizes: string[];
+  totalQuantity: number;
+  is_active: boolean;
 };
 
-const products = [
-  {
-    id: 1,
-    title: "Classic Cotton T-Shirt",
-    price: 599,
-    originalPrice: 799,
-    stock: 150,
-    category: "mens",
-    subcategory: "tshirts",
-    isActive: true,
-    image: "/placeholder.svg?height=80&width=80",
-    colors: ["Black", "White", "Navy"],
-    sizes: ["S", "M", "L", "XL"],
-  },
-  {
-    id: 2,
-    title: "Denim Casual Shirt",
-    price: 1299,
-    originalPrice: 1599,
-    stock: 89,
-    category: "mens",
-    subcategory: "shirts",
-    isActive: true,
-    image: "/placeholder.svg?height=80&width=80",
-    colors: ["Blue", "Black"],
-    sizes: ["M", "L", "XL"],
-  },
-  {
-    id: 3,
-    title: "Summer Dress",
-    price: 1499,
-    originalPrice: 1899,
-    stock: 67,
-    category: "womens",
-    subcategory: "dresses",
-    isActive: false,
-    image: "/placeholder.svg?height=80&width=80",
-    colors: ["Floral", "Red", "Blue"],
-    sizes: ["S", "M", "L"],
-  },
-  {
-    id: 4,
-    title: "Kids Polo Shirt",
-    price: 699,
-    originalPrice: 899,
-    stock: 234,
-    category: "kids",
-    subcategory: "tshirts",
-    isActive: true,
-    image: "/placeholder.svg?height=80&width=80",
-    colors: ["Red", "Blue", "Green"],
-    sizes: ["S", "M", "L"],
-  },
-];
-
 export default function ProductsListPage() {
+  const { data } = useQuery({
+    queryFn: getAllProducts,
+    queryKey: ["all-products"],
+  });
+
+  const products = data || [];
+
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedProduct, setSelectedProduct] = useState<ProductType | null>(
     null
   );
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsPerPage = 5;
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.title
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     const matchesCategory =
-      categoryFilter === "all" || product.category === categoryFilter;
+      categoryFilter === "all" ||
+      product.category.toLowerCase().includes(categoryFilter.toLowerCase());
     const matchesStatus =
       statusFilter === "all" ||
-      (statusFilter === "active" && product.isActive) ||
-      (statusFilter === "inactive" && !product.isActive);
+      (statusFilter === "active" && product.is_active) ||
+      (statusFilter === "inactive" && !product.is_active);
 
     return matchesSearch && matchesCategory && matchesStatus;
   });
+
+  // Pagination logic
+  const indexOfLastProduct = currentPage * productsPerPage;
+  const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
+  const currentProducts = filteredProducts.slice(
+    indexOfFirstProduct,
+    indexOfLastProduct
+  );
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
 
   const handleDelete = (id: number) => {
     if (confirm("Are you sure you want to delete this product?")) {
       console.log("Deleting product:", id);
       // Handle delete logic
     }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   return (
@@ -165,9 +131,10 @@ export default function ProductsListPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="mens">Men&apos;s</SelectItem>
-                <SelectItem value="womens">Women&apos;s</SelectItem>
-                <SelectItem value="kids">Kids</SelectItem>
+                <SelectItem value="men's collection">
+                  Men&apos;s Collection
+                </SelectItem>
+                <SelectItem value="kids collection">Kids Collection</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -185,7 +152,7 @@ export default function ProductsListPage() {
       </Card>
 
       {/* Products Table */}
-      <Card>
+      <Card className="mb-6">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -199,30 +166,18 @@ export default function ProductsListPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.map((product) => (
+              {currentProducts.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell>
                     <div className="flex items-center space-x-3">
-                      <div className="relative w-12 h-12 flex-shrink-0">
-                        <Image
-                          src={product.image || "/placeholder.svg"}
-                          alt={product.title}
-                          fill
-                          className="object-cover rounded-lg"
-                        />
-                      </div>
                       <div>
                         <p className="font-medium">{product.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {product.colors.length} colors, {product.sizes.length}{" "}
-                          sizes
-                        </p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div>
-                      <p className="capitalize">{product.category}</p>
+                    <div className="flex flex-row">
+                      <p className="capitalize">{product.category}</p> -
                       <p className="text-sm text-muted-foreground capitalize">
                         {product.subcategory}
                       </p>
@@ -231,29 +186,26 @@ export default function ProductsListPage() {
                   <TableCell>
                     <div>
                       <p className="font-medium">₹{product.price}</p>
-                      {product.originalPrice > product.price && (
-                        <p className="text-sm text-muted-foreground line-through">
-                          ₹{product.originalPrice}
-                        </p>
-                      )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <Badge
                       variant={
-                        product.stock > 50
+                        product.totalQuantity > 50
                           ? "default"
-                          : product.stock > 10
+                          : product.totalQuantity > 10
                           ? "secondary"
                           : "destructive"
                       }
                     >
-                      {product.stock} units
+                      {product.totalQuantity} units
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={product.isActive ? "default" : "secondary"}>
-                      {product.isActive ? "Active" : "Inactive"}
+                    <Badge
+                      variant={product.is_active ? "default" : "secondary"}
+                    >
+                      {product.is_active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -275,14 +227,12 @@ export default function ProductsListPage() {
                           {selectedProduct && (
                             <div className="space-y-4">
                               <div className="flex space-x-4">
-                                <div className="relative w-24 h-24">
+                                <div className="relative w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center">
                                   <Image
-                                    src={
-                                      selectedProduct.image ||
-                                      "/placeholder.svg"
-                                    }
+                                    src="/placeholder.svg"
                                     alt={selectedProduct.title}
-                                    fill
+                                    width={80}
+                                    height={80}
                                     className="object-cover rounded-lg"
                                   />
                                 </div>
@@ -301,32 +251,22 @@ export default function ProductsListPage() {
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                  <p className="font-medium">
-                                    Available Colors:
-                                  </p>
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {selectedProduct.colors.map(
-                                      (color: string) => (
-                                        <Badge key={color} variant="outline">
-                                          {color}
-                                        </Badge>
-                                      )
-                                    )}
-                                  </div>
+                                  <p className="font-medium">Stock:</p>
+                                  <p>{selectedProduct.totalQuantity} units</p>
                                 </div>
                                 <div>
-                                  <p className="font-medium">
-                                    Available Sizes:
-                                  </p>
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {selectedProduct.sizes.map(
-                                      (size: string) => (
-                                        <Badge key={size} variant="outline">
-                                          {size}
-                                        </Badge>
-                                      )
-                                    )}
-                                  </div>
+                                  <p className="font-medium">Status:</p>
+                                  <Badge
+                                    variant={
+                                      selectedProduct.is_active
+                                        ? "default"
+                                        : "secondary"
+                                    }
+                                  >
+                                    {selectedProduct.is_active
+                                      ? "Active"
+                                      : "Inactive"}
+                                  </Badge>
                                 </div>
                               </div>
                             </div>
@@ -356,6 +296,35 @@ export default function ProductsListPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {filteredProducts.length > productsPerPage && (
+        <div className="flex justify-center items-center gap-2">
+          <Button
+            variant="outline"
+            disabled={currentPage === 1}
+            onClick={() => handlePageChange(currentPage - 1)}
+          >
+            Previous
+          </Button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <Button
+              key={page}
+              variant={currentPage === page ? "default" : "outline"}
+              onClick={() => handlePageChange(page)}
+            >
+              {page}
+            </Button>
+          ))}
+          <Button
+            variant="outline"
+            disabled={currentPage === totalPages}
+            onClick={() => handlePageChange(currentPage + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
