@@ -13,13 +13,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  deleteCategory,
   getAllCategories,
   removeSubcategoryFromCategory,
 } from "@/server/categories";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Folder, Trash2, X } from "lucide-react";
 import React, { useState } from "react";
+import { toast } from "sonner";
 import { AddEditCategory } from "./add-edit-category";
 
 export const CategoriesBlock = () => {
@@ -29,18 +29,20 @@ export const CategoriesBlock = () => {
     queryKey: ["allcategories"],
   });
 
+  console.log("data", AllCategories);
+
   const [expanded, setExpanded] = useState<number | null>(null);
 
   const toggleRow = (id: number) => {
     setExpanded((prev) => (prev === id ? null : id));
   };
 
-  const deleteCategoryMutation = useMutation({
-    mutationFn: deleteCategory,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["allcategories"] });
-    },
-  });
+  // const deleteCategoryMutation = useMutation({
+  //   mutationFn: deleteCategory,
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ["allcategories"] });
+  //   },
+  // });
 
   const removeSubcategoryMutation = useMutation({
     mutationFn: ({
@@ -56,7 +58,9 @@ export const CategoriesBlock = () => {
   });
 
   const handleDeleteCategory = (categoryId: number) => {
-    deleteCategoryMutation.mutate(categoryId);
+    console.log("-->", categoryId);
+    toast.info("Only Super Admin Can Delete!!!");
+    //deleteCategoryMutation.mutate(categoryId);
   };
 
   const handleRemoveSubCategory = (

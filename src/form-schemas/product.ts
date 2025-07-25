@@ -1,6 +1,7 @@
 import z from "zod";
 
 export const productCreateSchema = z.object({
+  id: z.number(),
   title: z.string().min(2, {
     message: "Title must be at least 2 characters.",
   }),
@@ -8,7 +9,7 @@ export const productCreateSchema = z.object({
     message: "Description must be at least 2 characters.",
   }),
   price: z.coerce.number().min(1, { message: "Price must be at least 1" }),
-
+  gender: z.array(z.string()).min(1, "Please select at least one gender"),
   isactive: z.boolean(),
   discounts: z.array(
     z.object({
@@ -26,10 +27,9 @@ export const productCreateSchema = z.object({
   ),
   category: z.number(),
   subcategory: z.number(),
+  type: z.string(),
   tags: z.array(z.string()),
   images: z.array(z.string()),
-  colorSelectionType: z.enum(["single", "multiple"]),
-  colors: z.array(z.string()),
   inventory: z.array(
     z.object({
       colorId: z.number(),

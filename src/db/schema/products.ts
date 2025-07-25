@@ -8,7 +8,9 @@ import {
   real,
   serial,
   text,
+  timestamp,
 } from "drizzle-orm/pg-core";
+import { user } from "./auth";
 
 // -----------------------
 // Categories Table
@@ -76,8 +78,13 @@ export const categorySubcategoriesRelations = relations(
 export const sizes = pgTable("availablesizes", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  shortform: text("shortform").notNull(),
-  isActive: boolean("isactive").default(true).notNull(),
+  sizenumber: integer("sizenumber"), // in cm
+  indiaSize: text("india_size"),
+  usSize: text("us_size"),
+  euSize: text("eu_size"),
+  ukSize: text("uk_size"),
+  type: text("type"), // upper or lower
+  categoryId: integer("category_id").references(() => categories.id),
 });
 
 export const colors = pgTable("availablecolors", {
@@ -96,7 +103,7 @@ export const productTags = pgTable("product_tags", {
 export const discounts = pgTable("discounts", {
   id: serial("id").primaryKey(),
   productId: integer("product_id").references(() => products.id),
-  type: text("type").notNull(), // 'direct' | 'quantity'
+  type: text("type").notNull(),
   value: real("value").notNull(),
   minQuantity: integer("min_quantity"),
 });
@@ -106,7 +113,24 @@ export const promocodes = pgTable("promocodes", {
   productId: integer("product_id").references(() => products.id),
   promocode: text("promocode").notNull(),
   value: real("value").notNull(),
-  type: text("type").notNull(), // 'percentage'
+  type: text("type").notNull(),
+});
+
+export const genders = pgTable("gender", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+});
+
+export const productGenders = pgTable("product_genders", {
+  id: serial("id").primaryKey(),
+
+  productId: integer("product_id")
+    .references(() => products.id, { onDelete: "cascade" })
+    .notNull(),
+
+  genderId: integer("gender_id")
+    .references(() => genders.id, { onDelete: "cascade" })
+    .notNull(),
 });
 
 export const products = pgTable("products", {
@@ -177,3 +201,23 @@ export const productVariantRelations = relations(
     }),
   })
 );
+
+export const productReviews = pgTable("product_reviews", {
+  id: serial("id").primaryKey(),
+
+  productId: integer("product_id")
+    .references(() => products.id, { onDelete: "cascade" })
+    .notNull(),
+
+  userId: integer("user_id")
+    .references(() => user.id, { onDelete: "cascade" })
+    .notNull(),
+
+  rating: integer("rating").notNull(),
+
+  comment: text("comment"),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});

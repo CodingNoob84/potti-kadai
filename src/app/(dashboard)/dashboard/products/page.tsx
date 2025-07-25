@@ -1,15 +1,9 @@
 "use client";
 
+import { ProductDetailsInExpand } from "@/components/dashboard/products/product-expand";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -18,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -28,52 +23,45 @@ import {
 } from "@/components/ui/table";
 import { getAllProducts } from "@/server/products";
 import { useQuery } from "@tanstack/react-query";
-import { Edit, Eye, Plus, Search, Trash2 } from "lucide-react";
-import Image from "next/image";
+import {
+  ChevronDown,
+  ChevronUp,
+  Edit,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-
-type ProductType = {
-  id: number;
-  title: string;
-  price: number;
-  category: string;
-  subcategory: string;
-  totalQuantity: number;
-  is_active: boolean;
-};
+import React, { useState } from "react";
 
 export default function ProductsListPage() {
-  const { data } = useQuery({
+  const { data: products, isLoading } = useQuery({
     queryFn: getAllProducts,
     queryKey: ["all-products"],
   });
 
-  const products = data || [];
-
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedProduct, setSelectedProduct] = useState<ProductType | null>(
-    null
-  );
+  const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 5;
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.title
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      categoryFilter === "all" ||
-      product.category.toLowerCase().includes(categoryFilter.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" && product.is_active) ||
-      (statusFilter === "inactive" && !product.is_active);
+  const filteredProducts =
+    products?.filter((product) => {
+      const matchesSearch = product.title
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+      const matchesCategory =
+        categoryFilter === "all" ||
+        product.category.toLowerCase().includes(categoryFilter.toLowerCase());
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && product.is_active) ||
+        (statusFilter === "inactive" && !product.is_active);
 
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+      return matchesSearch && matchesCategory && matchesStatus;
+    }) || [];
 
   // Pagination logic
   const indexOfLastProduct = currentPage * productsPerPage;
@@ -94,6 +82,40 @@ export default function ProductsListPage() {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
+
+  const toggleProductExpand = (productId: number) => {
+    setExpandedProduct(expandedProduct === productId ? null : productId);
+  };
+
+  // Loading skeleton for table rows
+  const TableRowSkeleton = () => (
+    <TableRow>
+      <TableCell>
+        <div className="flex items-center space-x-2">
+          <Skeleton className="h-4 w-4 rounded-sm" />
+          <Skeleton className="h-4 w-[150px]" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-[100px]" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-[80px]" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-6 w-[60px]" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-6 w-[70px]" />
+      </TableCell>
+      <TableCell>
+        <div className="flex space-x-2">
+          <Skeleton className="h-8 w-8 rounded-md" />
+          <Skeleton className="h-8 w-8 rounded-md" />
+        </div>
+      </TableCell>
+    </TableRow>
+  );
 
   return (
     <div className="p-6">
@@ -166,132 +188,101 @@ export default function ProductsListPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentProducts.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <div className="flex items-center space-x-3">
-                      <div>
-                        <p className="font-medium">{product.title}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-row">
-                      <p className="capitalize">{product.category}</p> -
-                      <p className="text-sm text-muted-foreground capitalize">
-                        {product.subcategory}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">₹{product.price}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        product.totalQuantity > 50
-                          ? "default"
-                          : product.totalQuantity > 10
-                          ? "secondary"
-                          : "destructive"
-                      }
-                    >
-                      {product.totalQuantity} units
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={product.is_active ? "default" : "secondary"}
-                    >
-                      {product.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRowSkeleton key={`skeleton-${i}`} />
+                ))
+              ) : currentProducts.length > 0 ? (
+                currentProducts.map((product) => (
+                  <React.Fragment key={product.id}>
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        <div
+                          className="flex items-center space-x-2 cursor-pointer"
+                          onClick={() => toggleProductExpand(product.id)}
+                        >
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => setSelectedProduct(product)}
+                            className="h-4 w-4"
                           >
-                            <Eye className="h-4 w-4" />
+                            {expandedProduct === product.id ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
                           </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Product Details</DialogTitle>
-                          </DialogHeader>
-                          {selectedProduct && (
-                            <div className="space-y-4">
-                              <div className="flex space-x-4">
-                                <div className="relative w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center">
-                                  <Image
-                                    src="/placeholder.svg"
-                                    alt={selectedProduct.title}
-                                    width={80}
-                                    height={80}
-                                    className="object-cover rounded-lg"
-                                  />
-                                </div>
-                                <div className="flex-1">
-                                  <h3 className="font-semibold text-lg">
-                                    {selectedProduct.title}
-                                  </h3>
-                                  <p className="text-muted-foreground capitalize">
-                                    {selectedProduct.category} -{" "}
-                                    {selectedProduct.subcategory}
-                                  </p>
-                                  <p className="font-medium">
-                                    ₹{selectedProduct.price}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <p className="font-medium">Stock:</p>
-                                  <p>{selectedProduct.totalQuantity} units</p>
-                                </div>
-                                <div>
-                                  <p className="font-medium">Status:</p>
-                                  <Badge
-                                    variant={
-                                      selectedProduct.is_active
-                                        ? "default"
-                                        : "secondary"
-                                    }
-                                  >
-                                    {selectedProduct.is_active
-                                      ? "Active"
-                                      : "Inactive"}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </DialogContent>
-                      </Dialog>
-
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/dashboard/products/edit/${product.id}`}>
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                      </Button>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(product.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                          <span className="font-medium">{product.title}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-row gap-1">
+                          <span className="capitalize">{product.category}</span>
+                          <span>-</span>
+                          <span className="text-sm text-muted-foreground capitalize">
+                            {product.subcategory}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium">₹{product.price}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            product.totalQuantity > 50
+                              ? "default"
+                              : product.totalQuantity > 10
+                              ? "secondary"
+                              : "destructive"
+                          }
+                        >
+                          {product.totalQuantity} units
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={product.is_active ? "default" : "secondary"}
+                        >
+                          {product.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Button variant="ghost" size="icon" asChild>
+                            <Link
+                              href={`/dashboard/products/edit/${product.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(product.id)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {expandedProduct === product.id && (
+                      <TableRow key={`${product.id}-details`}>
+                        <TableCell colSpan={6} className="p-0">
+                          <ProductDetailsInExpand productId={product.id} />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    No products found
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>

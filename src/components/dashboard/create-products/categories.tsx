@@ -1,7 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   FormControl,
@@ -10,7 +8,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -22,8 +19,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { productCreateType } from "@/form-schemas/product";
 import { getAllCategories } from "@/server/categories";
 import { useQuery } from "@tanstack/react-query";
-import { X } from "lucide-react";
-import { useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 
 type Category = {
@@ -51,26 +46,7 @@ export const AddCategoriesBlock = ({ form }: AddCategoriesBlockProps) => {
 
   const { control, watch, setValue } = form;
 
-  const [newTag, setNewTag] = useState("");
-
   const category = watch("category");
-  const tags = watch("tags");
-
-  const addTag = () => {
-    const trimmedTag = newTag.trim();
-    if (trimmedTag && !tags.includes(trimmedTag)) {
-      setValue("tags", [...tags, trimmedTag], { shouldValidate: true });
-      setNewTag("");
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setValue(
-      "tags",
-      tags.filter((tag: string) => tag !== tagToRemove),
-      { shouldValidate: true }
-    );
-  };
 
   const handleCategoryChange = (value: number) => {
     setValue("category", value, { shouldValidate: true });
@@ -172,8 +148,34 @@ export const AddCategoriesBlock = ({ form }: AddCategoriesBlockProps) => {
           />
         </div>
 
+        {/* Type Select for clothing-related categories */}
+        {selectedCategory?.name.toLowerCase().includes("clothing") && (
+          <FormField
+            control={control}
+            name="type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Type</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="text-muted-foreground">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="upper">Upper</SelectItem>
+                    <SelectItem value="lower">Lower</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
         {/* Tags Section */}
-        <FormField
+        {/* <FormField
           control={control}
           name="tags"
           render={() => (
@@ -225,7 +227,7 @@ export const AddCategoriesBlock = ({ form }: AddCategoriesBlockProps) => {
               )}
             </FormItem>
           )}
-        />
+        /> */}
       </CardContent>
     </Card>
   );

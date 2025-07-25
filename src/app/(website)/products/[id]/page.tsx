@@ -1,5 +1,8 @@
 "use client";
 
+import { ImageGallery } from "@/components/product-details/images";
+import { ProductDetailSkeleton } from "@/components/product-details/product-details-skeleton";
+import { Size, SizeSelector } from "@/components/product-details/size-selector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,10 +21,10 @@ import {
   Star,
   Truck,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 // Helper function to generate random rating between 3.5 and 5
 const getReviewRating = () => {
@@ -40,41 +43,36 @@ export default function ProductDetailPage() {
     enabled: !!productId,
   });
 
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [selectedSize, setSelectedSize] = useState("");
-  const [selectedColor, setSelectedColor] = useState("");
+  const [selectedSizeId, setSelectedSizeId] = useState<number | null>(null);
+  const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [availableSizes, setAvailableSizes] = useState<Size[]>([]);
+
+  // Set first color as default when product loads
+  useEffect(() => {
+    if (product?.inventory && product?.inventory?.length > 0) {
+      const firstColor = product.inventory[0];
+      setSelectedColorId(firstColor.colorId);
+      setAvailableSizes(firstColor.sizes);
+    }
+  }, [product]);
+
+  // Update available sizes when color changes
+  useEffect(() => {
+    if (product && selectedColorId) {
+      const colorInventory = product.inventory.find(
+        (color) => color.colorId === selectedColorId
+      );
+      if (colorInventory) {
+        setAvailableSizes(colorInventory.sizes);
+        setSelectedSizeId(null); // Reset size selection when color changes
+      }
+    }
+  }, [selectedColorId, product]);
 
   if (isLoading) {
-    return (
-      <div className="container px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-5 gap-8">
-          {/* Image loading skeleton */}
-          <div className="space-y-3 col-span-2">
-            <div className="relative aspect-square overflow-hidden rounded-lg border bg-gray-50 animate-pulse" />
-            <div className="flex space-x-2 overflow-x-auto pb-1">
-              {[...Array(4)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-16 h-16 bg-gray-100 rounded-md animate-pulse"
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Details loading skeleton */}
-          <div className="space-y-5 col-span-3">
-            <div className="space-y-3">
-              <div className="h-8 w-3/4 bg-gray-100 rounded animate-pulse" />
-              <div className="h-4 w-1/2 bg-gray-100 rounded animate-pulse" />
-            </div>
-            <div className="h-4 w-full bg-gray-100 rounded animate-pulse" />
-            <div className="h-4 w-2/3 bg-gray-100 rounded animate-pulse" />
-          </div>
-        </div>
-      </div>
-    );
+    return <ProductDetailSkeleton />;
   }
 
   if (!product) {
@@ -86,33 +84,56 @@ export default function ProductDetailPage() {
     product.discount?.type === "direct" ? product.discount.value : 0;
   const discountedPrice =
     product.price - (product.price * discountPercentage) / 100;
+  const totalPrice = product.price * quantity;
+  const totalDiscountedPrice = discountedPrice * quantity;
+  const savings = totalPrice - totalDiscountedPrice;
 
   const handleAddToCart = () => {
-    if (!selectedSize || !selectedColor) {
-      alert("Please select size and color");
+    if (!selectedSizeId || !selectedColorId) {
+      toast.error("Please select size and color");
       return;
     }
+
+    const selectedColor = product.inventory.find(
+      (c) => c.colorId === selectedColorId
+    );
+    const selectedSize = availableSizes.find(
+      (s) => s.sizeId === selectedSizeId
+    );
+
+    toast.success("Added to cart");
     console.log("Added to cart:", {
-      product,
-      selectedSize,
-      selectedColor,
+      productId: product.id,
+      colorId: selectedColorId,
+      colorName: selectedColor?.name,
+      sizeId: selectedSizeId,
+      sizeName: selectedSize?.name,
       quantity,
     });
   };
 
   const handleBuyNow = () => {
-    if (!selectedSize || !selectedColor) {
-      alert("Please select size and color");
+    if (!selectedSizeId || !selectedColorId) {
+      toast.error("Please select size and color");
       return;
     }
-    console.log("Buy now:", { product, selectedSize, selectedColor, quantity });
-  };
 
-  // Get all unique sizes from inventory
-  const allSizes = product.inventory.flatMap((color) =>
-    color.sizes.map((size) => size.name)
-  );
-  const uniqueSizes = [...new Set(allSizes)];
+    const selectedColor = product.inventory.find(
+      (c) => c.colorId === selectedColorId
+    );
+    const selectedSize = availableSizes.find(
+      (s) => s.sizeId === selectedSizeId
+    );
+
+    console.log("Buy now:", {
+      productId: product.id,
+      colorId: selectedColorId,
+      colorName: selectedColor?.name,
+      sizeId: selectedSizeId,
+      sizeName: selectedSize?.name,
+      quantity,
+    });
+  };
 
   return (
     <div className="container px-4 py-6 sm:px-6 lg:px-8">
@@ -138,48 +159,16 @@ export default function ProductDetailPage() {
         <span className="text-foreground">{product.name}</span>
       </nav>
 
-      <div className="grid lg:grid-cols-5 gap-8">
-        {/* Product Images */}
-        <div className="space-y-3 col-span-2">
-          {/* Main Image */}
-          <div className="relative aspect-square overflow-hidden rounded-lg border bg-gray-50">
-            <Image
-              src={product.images[selectedImage]?.url || "/placeholder.svg"}
-              alt={product.name}
-              fill
-              className="object-contain p-4"
-              priority
-            />
-            {discountPercentage > 0 && (
-              <Badge className="absolute top-3 left-3 bg-red-500">
-                {discountPercentage}% OFF
-              </Badge>
-            )}
-          </div>
+      <div className="grid lg:grid-cols-3 gap-8">
+        {/* Product Images - Column 1 */}
+        <ImageGallery
+          images={product.images}
+          discountPercentage={15}
+          colorId={selectedColorId}
+        />
 
-          {/* Thumbnail Images */}
-          <div className="flex space-x-2 overflow-x-auto pb-1">
-            {product.images.map((image, index) => (
-              <button
-                key={index}
-                onClick={() => setSelectedImage(index)}
-                className={`relative w-16 h-16 flex-shrink-0 rounded-md border overflow-hidden ${
-                  selectedImage === index ? "border-primary" : "border-muted"
-                }`}
-              >
-                <Image
-                  src={image.url || "/placeholder.svg"}
-                  alt={`${product.name} ${index + 1}`}
-                  fill
-                  className="object-cover"
-                />
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Product Details */}
-        <div className="space-y-5 col-span-3">
+        {/* Product Details - Column 2 */}
+        <div className="space-y-5">
           <div>
             <h1 className="text-2xl font-bold mb-1">{product.name}</h1>
             <div className="flex items-center space-x-3 mb-3">
@@ -209,6 +198,9 @@ export default function ProductDetailPage() {
                   <span className="text-lg text-muted-foreground line-through">
                     ₹{product.price}
                   </span>
+                  <Badge className="bg-red-500">
+                    {discountPercentage}% OFF
+                  </Badge>
                 </>
               ) : (
                 <span className="text-2xl font-bold">₹{product.price}</span>
@@ -216,56 +208,42 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          <p className="text-muted-foreground text-sm">{product.description}</p>
-
           {/* Color Selection */}
           <div>
             <Label className="text-sm font-medium mb-2 block">Color</Label>
-            <RadioGroup value={selectedColor} onValueChange={setSelectedColor}>
-              <div className="flex flex-wrap gap-2">
-                {product.inventory.map((color) => (
-                  <div key={color.colorId}>
-                    <RadioGroupItem
-                      value={color.name}
-                      id={`color-${color.colorId}`}
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor={`color-${color.colorId}`}
-                      className="flex items-center justify-center px-3 py-1.5 text-sm border rounded-md cursor-pointer peer-checked:border-primary peer-checked:bg-primary/10 hover:border-primary/50"
-                    >
-                      {color.name}
-                    </Label>
-                  </div>
-                ))}
-              </div>
+            <RadioGroup
+              value={selectedColorId?.toString() || ""}
+              onValueChange={(value) => setSelectedColorId(Number(value))}
+              className="flex flex-wrap gap-2"
+            >
+              {product.inventory.map((color) => (
+                <div key={color.colorId}>
+                  <RadioGroupItem
+                    value={color.colorId.toString()}
+                    id={`color-${color.colorId}`}
+                    className="peer sr-only"
+                  />
+                  <Label
+                    htmlFor={`color-${color.colorId}`}
+                    className={`flex items-center justify-center px-3 py-1.5 text-sm border rounded-md cursor-pointer ${
+                      selectedColorId === color.colorId
+                        ? "border-primary bg-primary/10"
+                        : "hover:border-primary/50"
+                    }`}
+                  >
+                    {color.name}
+                  </Label>
+                </div>
+              ))}
             </RadioGroup>
           </div>
 
           {/* Size Selection */}
-          {uniqueSizes.length > 0 && (
-            <div className="pt-2">
-              <Label className="text-sm font-medium mb-2 block">Size</Label>
-              <RadioGroup value={selectedSize} onValueChange={setSelectedSize}>
-                <div className="flex flex-wrap gap-2">
-                  {uniqueSizes.map((size) => (
-                    <div key={size}>
-                      <RadioGroupItem
-                        value={size}
-                        id={`size-${size}`}
-                        className="peer sr-only"
-                      />
-                      <Label
-                        htmlFor={`size-${size}`}
-                        className="flex items-center justify-center w-10 h-10 text-sm border rounded-md cursor-pointer peer-checked:border-primary peer-checked:bg-primary/10 hover:border-primary/50"
-                      >
-                        {size}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </RadioGroup>
-            </div>
+          {availableSizes.length > 0 && (
+            <SizeSelector
+              sizes={availableSizes}
+              onSizeSelect={(sizeId) => setSelectedSizeId(sizeId)}
+            />
           )}
 
           {/* Quantity */}
@@ -293,14 +271,14 @@ export default function ProductDetailPage() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <Button size="sm" className="flex-1" onClick={handleAddToCart}>
+            <Button size="sm" className="flex-1 py-2" onClick={handleAddToCart}>
               <ShoppingCart className="h-4 w-4 mr-2" />
               Add to Cart
             </Button>
             <Button
               size="sm"
               variant="outline"
-              className="flex-1"
+              className="flex-1 py-1"
               onClick={handleBuyNow}
             >
               Buy Now
@@ -333,6 +311,103 @@ export default function ProductDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Price Calculation - Column 3 */}
+        <div className="space-y-6">
+          <Card className="border shadow-sm">
+            <CardContent className=" px-4 space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Price Details
+              </h3>
+
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">
+                    Price ({quantity} item{quantity > 1 ? "s" : ""})
+                  </span>
+                  <span className="font-medium">
+                    ₹{(product.price * quantity).toFixed(2)}
+                  </span>
+                </div>
+
+                {discountPercentage > 0 && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">
+                        Discount{" "}
+                        <Badge className="bg-red-500">
+                          {discountPercentage}% OFF
+                        </Badge>
+                      </span>
+                      <span className="text-green-600 font-medium">
+                        -₹{savings.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">You Save</span>
+                      <span className="text-green-600 font-medium">
+                        ({discountPercentage}% off)
+                      </span>
+                    </div>
+                  </>
+                )}
+
+                <div className="border-t border-gray-200 pt-3 mt-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-900 font-semibold">
+                      Total Amount
+                    </span>
+                    <span className="text-gray-900 font-semibold text-lg">
+                      ₹
+                      {discountPercentage > 0
+                        ? totalDiscountedPrice.toFixed(2)
+                        : totalPrice.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Available Offers */}
+          <Card className="border shadow-sm">
+            <CardContent className="px-4 space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Available Offers
+              </h3>
+
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="bg-green-100 text-green-800 rounded-full p-1.5">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      10% Special Discount
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Get extra 10% off on orders above ₹1000
+                    </p>
+                    <p className="text-xs text-blue-600 mt-1 font-medium">
+                      T&C Apply
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Product Details and Reviews */}
@@ -348,6 +423,9 @@ export default function ProductDetailPage() {
               <CardContent className="p-4">
                 <h3 className="font-medium mb-3">Product Information</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
+                  <p className="text-muted-foreground text-sm">
+                    {product.description}
+                  </p>
                   <div>
                     <p className="text-muted-foreground">Category</p>
                     <p className="font-medium">{product.category}</p>

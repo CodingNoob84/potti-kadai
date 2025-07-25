@@ -1,18 +1,16 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  deleteSubCategory,
-  getSubCategoriesWithCategory,
-} from "@/server/categories";
+import { getSubCategoriesWithCategory } from "@/server/categories";
 import { FromSubCategoryType } from "@/types/categories";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { AddEditSubCategory } from "./add-edit-subcategories";
 
 export const SubCategoriesBlock = () => {
-  const queryClient = useQueryClient();
+  //const queryClient = useQueryClient();
   const { data: AllSubCategories, isLoading } = useQuery({
     queryKey: ["all-subcategories"],
     queryFn: getSubCategoriesWithCategory,
@@ -59,15 +57,17 @@ export const SubCategoriesBlock = () => {
     );
   }, [filteredSubcategories]);
 
-  const deleteSubCategoryMutation = useMutation({
-    mutationFn: deleteSubCategory,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["all-subcategories"] });
-    },
-  });
+  // const deleteSubCategoryMutation = useMutation({
+  //   mutationFn: deleteSubCategory,
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ["all-subcategories"] });
+  //   },
+  // });
 
   const handleDeleteSubcategory = (id: number) => {
-    deleteSubCategoryMutation.mutate(id);
+    console.log("-->", id);
+    toast.info("Only Super Admin Can Delete!!!");
+    //deleteSubCategoryMutation.mutate(id);
   };
   if (isLoading) {
     return <SubCategoriesBlockSkeleton />;

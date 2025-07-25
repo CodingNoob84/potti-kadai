@@ -7,24 +7,11 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { ProductForm } from "./form";
 
-const initialValues: productCreateType = {
-  id: 0,
-  title: "",
-  description: "",
-  price: 1,
-  gender: [],
-  isactive: true,
-  discounts: [],
-  promocodes: [],
-  category: 0,
-  subcategory: 0,
-  type: "",
-  tags: [],
-  images: [],
-  inventory: [],
-};
-
-export const CreateProduct = () => {
+export const EditProduct = ({
+  initialValues,
+}: {
+  initialValues: productCreateType;
+}) => {
   const form = useForm<productCreateType>({
     resolver: zodResolver(productCreateSchema),
     defaultValues: initialValues,

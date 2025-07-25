@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { productCreateType } from "@/form-schemas/product";
-import { ImagePlus, Trash2 } from "lucide-react";
+import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { UseFormReturn } from "react-hook-form";
@@ -17,8 +17,9 @@ export const ImagesBlock = ({ form, maxImages = 8 }: ImagesBlockProps) => {
   const { setValue, watch } = form;
   const images = watch("images") || [];
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number[]>([]);
 
-  const uploadToCloudinary = async (file: File) => {
+  const uploadToCloudinary = async (file: File, index: number) => {
     const formData = new FormData();
     formData.append("file", file);
     const folderName = "pottikadai";
@@ -32,11 +33,13 @@ export const ImagesBlock = ({ form, maxImages = 8 }: ImagesBlockProps) => {
 
       if (!response.ok) throw new Error("Upload failed");
       const data = await response.json();
-      console.log("data", data);
       return data.result.secure_url;
     } catch (error) {
       console.error("Upload error:", error);
       return null;
+    } finally {
+      // Remove this file's progress when done
+      setUploadProgress((prev) => prev.filter((_, i) => i !== index));
     }
   };
 
@@ -44,12 +47,18 @@ export const ImagesBlock = ({ form, maxImages = 8 }: ImagesBlockProps) => {
     if (!files || files.length === 0 || uploading) return;
 
     setUploading(true);
+    setUploadProgress(Array.from(files).map(() => 0)); // Initialize progress for each file
+
     try {
-      const uploadPromises = Array.from(files).map(uploadToCloudinary);
+      const fileArray = Array.from(files);
+      const uploadPromises = fileArray.map((file, index) =>
+        uploadToCloudinary(file, index)
+      );
+
       const urls = (await Promise.all(uploadPromises)).filter(
         Boolean
       ) as string[];
-      console.log("urls", urls);
+
       if (urls.length > 0) {
         setValue("images", [...images, ...urls].slice(0, maxImages), {
           shouldValidate: true,
@@ -112,14 +121,44 @@ export const ImagesBlock = ({ form, maxImages = 8 }: ImagesBlockProps) => {
               type="button"
               onClick={triggerFileInput}
               disabled={uploading}
-              className="aspect-square rounded-lg border-2 border-dashed hover:border-primary transition-colors flex items-center justify-center"
+              className={`aspect-square rounded-lg border-2 border-dashed transition-colors flex items-center justify-center relative overflow-hidden ${
+                uploading
+                  ? "border-primary/50 cursor-wait"
+                  : "hover:border-primary cursor-pointer"
+              }`}
             >
-              <div className="text-center p-4">
-                <ImagePlus className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <span className="text-sm text-muted-foreground">
-                  {uploading ? "Uploading..." : "Add Image"}
-                </span>
-              </div>
+              {uploading ? (
+                <div className="flex flex-col items-center justify-center p-4 w-full h-full">
+                  <Loader2 className="h-8 w-8 mx-auto text-primary animate-spin mb-2" />
+                  <span className="text-sm text-muted-foreground">
+                    Uploading {uploadProgress.length} image
+                    {uploadProgress.length !== 1 ? "s" : ""}...
+                  </span>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                    <div
+                      className="bg-green-400 h-1.5 rounded-full"
+                      style={{
+                        width: `${
+                          uploadProgress.length > 0
+                            ? uploadProgress.reduce((a, b) => a + b, 0) /
+                              uploadProgress.length
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center p-4">
+                  <ImagePlus className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <span className="text-sm text-muted-foreground">
+                    Add Image
+                  </span>
+                  <span className="block text-xs text-muted-foreground mt-1">
+                    {maxImages - images.length} remaining
+                  </span>
+                </div>
+              )}
             </button>
           )}
         </div>

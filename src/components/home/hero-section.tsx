@@ -1,9 +1,15 @@
 "use client";
 
+import {
+  ChevronLeft,
+  ChevronRight,
+  ShoppingBag,
+  Tag,
+  Truck,
+} from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 import { Button } from "../ui/button";
-import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const heroSlides = [
   {
@@ -12,44 +18,44 @@ const heroSlides = [
     title: "Shop Fashion for All",
     subtitle: "Branded Styles for Men, Women & Kids",
     description:
-      "Browse the latest collections from top brands. Perfect fits for every age and every season—all in one place.",
+      "Browse the latest collections from top brands. Perfect fits for every age and every season.",
     cta: "Browse Collection",
+    icon: <ShoppingBag className="w-6 h-6 md:w-8 md:h-8 text-primary" />,
   },
   {
     id: 2,
     image: "/images/hero-section/discounts.png",
-    title: "Get Rewards & Save More",
-    subtitle: "Discounts, Deals & Cashback",
+    title: "Get Exclusive Discounts",
+    subtitle: "Limited Time Offers & Deals",
     description:
-      "Review your purchases and unlock exclusive savings. The more you shop and share, the more you earn.",
-    cta: "Unlock Offers",
+      "Enjoy special discounts on premium collections. Sign up for personalized offers.",
+    cta: "Shop Deals",
+    icon: <Tag className="w-6 h-6 md:w-8 md:h-8 text-primary" />,
   },
   {
     id: 3,
     image: "/images/hero-section/home-delivery.png",
-    title: "Fast Delivery. Easy Returns.",
-    subtitle: "Free Cancellation Within 24 Hours",
+    title: "Fast & Reliable Delivery",
+    subtitle: "Free Shipping on All Orders",
     description:
-      "Enjoy doorstep delivery and hassle-free cancellations—no questions asked within the first 24 hours.",
-    cta: "Shop Risk-Free",
+      "Get products delivered to your doorstep with our premium delivery service.",
+    cta: "Shop Now",
+    icon: <Truck className="w-6 h-6 md:w-8 md:h-8 text-primary" />,
   },
 ];
 
 export const HeroSection = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  const nextSlide = () => {
+  const nextSlide = () =>
     setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-  };
-
-  const prevSlide = () => {
+  const prevSlide = () =>
     setCurrentSlide(
       (prev) => (prev - 1 + heroSlides.length) % heroSlides.length
     );
-  };
 
   return (
-    <section className="relative h-[520px] md:h-[600px] bg-gradient-to-b from-purple-50 to-white">
+    <section className="relative h-[600px] sm:h-[450px] md:h-[600px] bg-gradient-to-b from-primary/5 to-white">
       <div className="relative h-full overflow-hidden">
         {heroSlides.map((slide, index) => (
           <div
@@ -60,35 +66,38 @@ export const HeroSection = () => {
                 : "opacity-0 pointer-events-none"
             }`}
           >
-            <div className="container mx-auto h-full px-6 md:px-10 grid grid-cols-1 md:grid-cols-2 items-center gap-10">
-              {/* Text */}
-              <div className="space-y-5 max-w-xl pl-12 md:pl-16 z-20">
-                <h1 className="text-3xl md:text-5xl font-extrabold text-primary leading-tight">
-                  {slide.title}
-                </h1>
-                <p className="text-lg md:text-xl font-medium text-primary/80">
+            <div className="container mx-auto h-full px-4 sm:px-6 md:px-10 grid grid-cols-1 md:grid-cols-2 items-center gap-6 md:gap-10">
+              {/* Text Content */}
+              <div className="space-y-3 sm:space-y-4 md:space-y-6 max-w-xl pl-4 sm:pl-8 md:pl-16 z-20 order-2 md:order-1">
+                <div className="flex items-center gap-2 md:gap-3">
+                  {slide.icon}
+                  <h1 className="text-lg sm:text-xl md:text-3xl font-bold text-foreground leading-snug md:leading-tight">
+                    {slide.title}
+                  </h1>
+                </div>
+                <p className="text-base sm:text-lg md:text-xl font-semibold text-primary">
                   {slide.subtitle}
                 </p>
-                <p className="text-primary/80 text-base md:text-lg">
+                <p className="text-sm sm:text-base md:text-lg text-muted-foreground">
                   {slide.description}
                 </p>
                 <Button
-                  size="lg"
-                  className="bg-primary hover:bg-primary text-white shadow-sm hover:shadow-md transition-all w-fit"
+                  size="sm"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium shadow hover:shadow-md transition-all px-6 py-4 text-base md:text-lg md:px-8 md:py-6"
                 >
                   {slide.cta}
                 </Button>
               </div>
 
               {/* Image */}
-              <div className="relative w-full h-[250px] md:h-[400px]">
+              <div className="relative w-full h-[180px] sm:h-[220px] md:h-[400px] order-1 md:order-2">
                 <Image
                   src={slide.image}
                   alt={slide.title}
                   fill
-                  className="object-contain"
+                  className="object-contain transition-transform duration-500 ease-in-out"
                   priority={index === currentSlide}
-                  sizes="(max-width: 768px) 100vw, 50vw"
+                  sizes="(max-width: 640px) 100vw, (max-width: 768px) 80vw, 50vw"
                 />
               </div>
             </div>
@@ -96,31 +105,49 @@ export const HeroSection = () => {
         ))}
       </div>
 
-      {/* Navigation Arrows */}
-      <div className="absolute inset-0 flex items-center justify-between px-4 z-20">
+      {/* Navigation Arrows - Mobile */}
+      <div className="md:hidden absolute inset-0 flex items-center justify-between px-2 z-20">
         <button
           onClick={prevSlide}
-          className="p-2 rounded-full bg-white/80 text-purple-900 shadow hover:bg-white"
+          className="p-2 rounded-full bg-background/80 text-primary shadow hover:bg-background transition-all"
           aria-label="Previous slide"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <button
           onClick={nextSlide}
-          className="p-2 rounded-full bg-white/80 text-purple-900 shadow hover:bg-white"
+          className="p-2 rounded-full bg-background/80 text-primary shadow hover:bg-background transition-all"
           aria-label="Next slide"
         >
           <ChevronRight className="h-5 w-5" />
         </button>
       </div>
 
+      {/* Navigation Arrows - Desktop */}
+      <div className="hidden md:flex absolute inset-0 items-center justify-between px-4 z-20">
+        <button
+          onClick={prevSlide}
+          className="p-3 rounded-full bg-background/90 text-primary shadow-lg hover:bg-background transition-all hover:scale-110"
+          aria-label="Previous slide"
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+        <button
+          onClick={nextSlide}
+          className="p-3 rounded-full bg-background/90 text-primary shadow-lg hover:bg-background transition-all hover:scale-110"
+          aria-label="Next slide"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
+      </div>
+
       {/* Pagination Dots */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
+      <div className="absolute bottom-4 sm:bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
         {heroSlides.map((_, index) => (
           <button
             key={index}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              index === currentSlide ? "bg-purple-600 w-6" : "bg-purple-300 w-3"
+            className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
+              index === currentSlide ? "bg-primary w-6" : "bg-primary/30 w-3"
             }`}
             onClick={() => setCurrentSlide(index)}
             aria-label={`Go to slide ${index + 1}`}

@@ -11,13 +11,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@/components/ui/form";
+import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -25,18 +19,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Skeleton } from "@/components/ui/skeleton";
 import { productCreateType } from "@/form-schemas/product";
-import { getColors, getSizes } from "@/server/products";
+import { getColors, getSizesByOptions } from "@/server/products";
 import {
   colorsTypes,
   DefaultsizeTypes,
   inventoryType,
   sizeTypes,
 } from "@/types/products";
-
 import { useQuery } from "@tanstack/react-query";
 import { Info, Search, Trash2 } from "lucide-react";
+import { useCallback, useMemo } from "react";
 import { UseFormReturn } from "react-hook-form";
 
 export const InventoryManagement = ({
@@ -44,94 +38,103 @@ export const InventoryManagement = ({
 }: {
   form: UseFormReturn<productCreateType>;
 }) => {
-  const { data: sizesdata } = useQuery({
-    queryKey: ["sizes"],
-    queryFn: getSizes,
+  const { watch, setValue } = form;
+
+  const categoryId = watch("category");
+  const type = watch("type");
+  const inventory = useMemo(() => watch("inventory") || [], [watch]);
+
+  const {
+    data: sizesdata = [],
+    isLoading: isLoadingSizes,
+    isFetching: isFetchingSizes,
+  } = useQuery({
+    queryKey: ["sizes", categoryId, type],
+    queryFn: ({ queryKey }) => {
+      const [, categoryId, type] = queryKey;
+      if (!categoryId || !type) return [];
+      return getSizesByOptions(Number(categoryId), type.toString());
+    },
+    enabled: !!categoryId && !!type,
+    staleTime: Infinity, // Prevent unnecessary refetches
   });
-  const { data: colorsdata = [] } = useQuery({
+
+  const { data: colorsdata = [], isLoading: isLoadingColors } = useQuery({
     queryKey: ["colors"],
     queryFn: getColors,
+    staleTime: Infinity,
   });
 
-  const { control, watch, setValue } = form;
-  const colorSelectionType = watch("colorSelectionType");
+  const totalQuantity = useMemo(
+    () =>
+      inventory.reduce(
+        (total: number, item: inventoryType) =>
+          total + item.sizes.reduce((sum, s) => sum + s.quantity, 0),
+        0
+      ),
+    [inventory]
+  );
 
-  const inventory = watch("inventory") || [];
+  const addColor = useCallback(
+    (color: colorsTypes) => {
+      if (inventory.some((i: inventoryType) => i.colorId === color.id)) return;
 
-  const addColor = (color: { id: number; name: string; colorCode: string }) => {
-    if (colorSelectionType === "single" && inventory.length >= 1) {
-      // toast({
-      //   title: "Only one color allowed",
-      //   description: "Switch to 'multiple' to add more colors.",
-      //   variant: "destructive",
-      // });
-      alert("Only one color allowed");
-      return;
-    }
+      const selectedSizes =
+        sizesdata?.map((s: DefaultsizeTypes) => ({
+          sizeId: s.id,
+          name: s.name,
+          quantity: 0,
+        })) || [];
 
-    if (inventory.some((i: inventoryType) => i.colorId === color.id)) return;
-
-    const updatedInventory = [
-      ...inventory,
-      {
-        colorId: color.id,
-        name: color.name,
-        colorCode: color.colorCode,
-        sizes: sizesdata
-          ? sizesdata?.map((size: DefaultsizeTypes) => ({
-              sizeId: size.id,
-              name: size.shortform,
-              quantity: 0,
-            }))
-          : [],
-      },
-    ];
-
-    setValue("inventory", updatedInventory, { shouldValidate: true });
-
-    // ✅ Close the popover after adding one color in single mode
-    if (colorSelectionType === "single") {
-      const el = document.activeElement as HTMLElement;
-      el?.blur(); // closes popover by losing focus
-    }
-  };
-
-  const removeColor = (colorId: number) => {
-    console.log("-->", colorId);
-    const updatedInventory = inventory.filter(
-      (i: inventoryType) => i.colorId !== colorId
-    );
-    setValue("inventory", updatedInventory, { shouldValidate: true });
-  };
-
-  const updateQuantity = (
-    colorId: number,
-    sizeId: number,
-    quantity: number
-  ) => {
-    const updatedInventory = inventory.map((i: inventoryType) => {
-      if (i.colorId === colorId) {
-        return {
-          ...i,
-          sizes: i.sizes.map((s: sizeTypes) =>
-            s.sizeId === sizeId ? { ...s, quantity } : s
-          ),
-        };
-      }
-      return i;
-    });
-    setValue("inventory", updatedInventory, { shouldValidate: true });
-  };
-
-  const totalQuantity = inventory.reduce(
-    (total: number, item: inventoryType) => {
-      return (
-        total +
-        item.sizes.reduce((sum: number, s: sizeTypes) => sum + s.quantity, 0)
+      setValue(
+        "inventory",
+        [
+          ...inventory,
+          {
+            colorId: color.id,
+            name: color.name,
+            colorCode: color.colorCode,
+            sizes: selectedSizes,
+          },
+        ],
+        { shouldValidate: true }
       );
     },
-    0
+    [inventory, setValue, sizesdata]
   );
+
+  const removeColor = useCallback(
+    (colorId: number) => {
+      setValue(
+        "inventory",
+        inventory.filter((i: inventoryType) => i.colorId !== colorId),
+        { shouldValidate: true }
+      );
+    },
+    [inventory, setValue]
+  );
+
+  const updateQuantity = useCallback(
+    (colorId: number, sizeId: number, quantity: number) => {
+      setValue(
+        "inventory",
+        inventory.map((i: inventoryType) =>
+          i.colorId === colorId
+            ? {
+                ...i,
+                sizes: i.sizes.map((s: sizeTypes) =>
+                  s.sizeId === sizeId ? { ...s, quantity } : s
+                ),
+              }
+            : i
+        ),
+        { shouldValidate: true }
+      );
+    },
+    [inventory, setValue]
+  );
+  console.log("inventory", inventory);
+  const isLoading = isLoadingSizes || isFetchingSizes || isLoadingColors;
 
   return (
     <Card>
@@ -140,38 +143,14 @@ export const InventoryManagement = ({
       </CardHeader>
       <CardContent className="space-y-6">
         <Form {...form}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Left Column */}
             <div className="space-y-4">
-              <FormField
-                control={control}
-                name="colorSelectionType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Color Selection</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        className="flex space-x-4"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="single" id="single" />
-                          <Label htmlFor="single">Single</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="multiple" id="multiple" />
-                          <Label htmlFor="multiple">Multiple</Label>
-                        </div>
-                      </RadioGroup>
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="bg-transparent">
-                    <Search className="h-4 w-4 mr-2" /> Search Colors
+                  <Button variant="outline" disabled={isLoading}>
+                    <Search className="h-4 w-4 mr-2" />
+                    {isLoading ? "Loading..." : "Search Colors"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-72">
@@ -184,10 +163,7 @@ export const InventoryManagement = ({
                           <CommandItem
                             key={color.id}
                             onSelect={() => addColor(color)}
-                            disabled={
-                              colorSelectionType === "single" &&
-                              inventory.length >= 1
-                            }
+                            disabled={isLoading}
                           >
                             <div className="flex items-center space-x-2">
                               <div
@@ -229,53 +205,79 @@ export const InventoryManagement = ({
               </div>
             </div>
 
-            <div className="col-span-2 space-y-4">
-              {inventory.map((colorItem: inventoryType) => (
-                <div key={colorItem.colorId} className="border rounded-md p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-full flex flex-row justify-between items-center">
-                      <div className="flex flex-row items-center gap-2">
+            {/* Right Column */}
+            <div className="col-span-3 space-y-4">
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="border rounded-md p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-8 w-8 rounded-md" />
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                        {[1, 2, 3, 4, 5, 6].map((j) => (
+                          <div key={j} className="space-y-1">
+                            <Skeleton className="h-4 w-12" />
+                            <Skeleton className="h-9 w-full" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : inventory.length > 0 ? (
+                inventory.map((colorItem: inventoryType) => (
+                  <div
+                    key={colorItem.colorId}
+                    className="border rounded-md p-4 space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
                         <div
                           className="w-4 h-4 rounded-full border"
                           style={{ backgroundColor: colorItem.colorCode }}
                         />
                         <span className="font-semibold">{colorItem.name}</span>
                       </div>
-                      <div>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className=""
-                          onClick={() => removeColor(colorItem.colorId)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => removeColor(colorItem.colorId)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                      {colorItem.sizes.map((size: sizeTypes) => (
+                        <div key={size.sizeId} className="flex flex-col gap-1">
+                          <Label>{size.name}</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={size.quantity?.toString() || ""}
+                            onChange={(e) =>
+                              updateQuantity(
+                                colorItem.colorId,
+                                size.sizeId,
+                                parseInt(e.target.value || "0", 10)
+                              )
+                            }
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {colorItem.sizes.map((size: sizeTypes) => (
-                      <div key={size.sizeId} className="flex flex-col gap-1">
-                        <Label>{size.name}</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={size.quantity?.toString() || ""}
-                          onChange={(e) => {
-                            const value = parseInt(e.target.value || "0", 10);
-                            updateQuantity(
-                              colorItem.colorId,
-                              size.sizeId,
-                              value
-                            );
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
+                ))
+              ) : (
+                <div className="flex items-center justify-center h-32 text-muted-foreground">
+                  {categoryId && type
+                    ? "Select a color to add inventory"
+                    : "Select a category and type first"}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </Form>

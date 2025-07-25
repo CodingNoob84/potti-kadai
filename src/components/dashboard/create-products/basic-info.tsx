@@ -7,10 +7,30 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { productCreateType } from "@/form-schemas/product";
 import { UseFormReturn } from "react-hook-form";
+
+const genderList = [
+  {
+    value: "1",
+    label: "Men",
+  },
+  {
+    value: "2",
+    label: "Women",
+  },
+  {
+    value: "3",
+    label: "BoyKids",
+  },
+  {
+    value: "4",
+    label: "GirlKids",
+  },
+];
 
 type Props = {
   form: UseFormReturn<productCreateType>;
@@ -83,6 +103,27 @@ export const ProductBasicInfo = ({ form }: Props) => {
             )}
           />
         </div>
+        <FormField
+          control={form.control}
+          name="gender"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Gender</FormLabel>
+              <FormControl>
+                <MultiSelect
+                  options={genderList}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  placeholder="Select options"
+                  variant="inverted"
+                />
+              </FormControl>
+
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </CardContent>
     </Card>
   );

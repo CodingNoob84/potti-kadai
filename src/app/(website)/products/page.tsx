@@ -1,15 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { Filter, Grid, List, Star } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -24,6 +19,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Slider } from "@/components/ui/slider";
+import { Filter, Grid, List, Star } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useState } from "react";
 
 const products = [
   {
@@ -159,21 +159,27 @@ export default function ProductsPage() {
   });
 
   const FilterContent = () => (
-    <div className="space-y-6">
+    <div className="px-4  space-y-8">
       {/* Gender Filter */}
       <div>
-        <h3 className="font-semibold mb-3">Gender</h3>
-        <div className="space-y-2">
+        <h3 className="font-semibold text-base mb-4 pb-2 border-b border-gray-100">
+          Gender
+        </h3>
+        <div className="space-y-3 pl-1">
           {["men", "women", "kids"].map((gender) => (
-            <div key={gender} className="flex items-center space-x-2">
+            <div key={gender} className="flex items-center space-x-3">
               <Checkbox
                 id={gender}
                 checked={selectedGenders.includes(gender)}
                 onCheckedChange={(checked: boolean) =>
                   handleGenderChange(gender, checked as boolean)
                 }
+                className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary"
               />
-              <Label htmlFor={gender} className="capitalize">
+              <Label
+                htmlFor={gender}
+                className="capitalize text-sm font-medium text-gray-700"
+              >
                 {gender}
               </Label>
             </div>
@@ -183,19 +189,25 @@ export default function ProductsPage() {
 
       {/* Category Filter */}
       <div>
-        <h3 className="font-semibold mb-3">Categories</h3>
-        <div className="space-y-2">
+        <h3 className="font-semibold text-base mb-4 pb-2 border-b border-gray-100">
+          Categories
+        </h3>
+        <div className="space-y-3 pl-1">
           {["tshirts", "shirts", "pants", "dresses", "hoodies"].map(
             (category) => (
-              <div key={category} className="flex items-center space-x-2">
+              <div key={category} className="flex items-center space-x-3">
                 <Checkbox
                   id={category}
                   checked={selectedCategories.includes(category)}
                   onCheckedChange={(checked: boolean) =>
                     handleCategoryChange(category, checked as boolean)
                   }
+                  className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary"
                 />
-                <Label htmlFor={category} className="capitalize">
+                <Label
+                  htmlFor={category}
+                  className="capitalize text-sm font-medium text-gray-700"
+                >
                   {category.replace(/([A-Z])/g, " $1").trim()}
                 </Label>
               </div>
@@ -206,17 +218,19 @@ export default function ProductsPage() {
 
       {/* Price Range Filter */}
       <div>
-        <h3 className="font-semibold mb-3">Price Range</h3>
-        <div className="space-y-4">
+        <h3 className="font-semibold text-base mb-4 pb-2 border-b border-gray-100">
+          Price Range
+        </h3>
+        <div className="space-y-4 px-1">
           <Slider
             value={priceRange}
             onValueChange={setPriceRange}
             max={5000}
             min={0}
             step={100}
-            className="w-full"
+            className="w-full [&>span:first-child]:h-2"
           />
-          <div className="flex justify-between text-sm text-muted-foreground">
+          <div className="flex justify-between text-sm text-gray-500">
             <span>₹{priceRange[0]}</span>
             <span>₹{priceRange[1]}</span>
           </div>
@@ -225,36 +239,54 @@ export default function ProductsPage() {
 
       {/* Quick Price Filters */}
       <div>
-        <h3 className="font-semibold mb-3">Quick Filters</h3>
-        <div className="space-y-2">
+        <h3 className="font-semibold text-base mb-4 pb-2 border-b border-gray-100">
+          Price Filters
+        </h3>
+        <div className="grid grid-cols-2 gap-2">
           <Button
-            variant="outline"
+            variant={
+              priceRange[0] === 0 && priceRange[1] === 500
+                ? "default"
+                : "outline"
+            }
             size="sm"
-            className="w-full justify-start bg-transparent"
+            className="h-9 text-xs sm:text-sm justify-start"
             onClick={() => setPriceRange([0, 500])}
           >
             Under ₹500
           </Button>
           <Button
-            variant="outline"
+            variant={
+              priceRange[0] === 500 && priceRange[1] === 1000
+                ? "default"
+                : "outline"
+            }
             size="sm"
-            className="w-full justify-start bg-transparent"
+            className="h-9 text-xs sm:text-sm justify-start"
             onClick={() => setPriceRange([500, 1000])}
           >
-            ₹500 - ₹1000
+            ₹500-₹1000
           </Button>
           <Button
-            variant="outline"
+            variant={
+              priceRange[0] === 1000 && priceRange[1] === 2000
+                ? "default"
+                : "outline"
+            }
             size="sm"
-            className="w-full justify-start bg-transparent"
+            className="h-9 text-xs sm:text-sm justify-start"
             onClick={() => setPriceRange([1000, 2000])}
           >
-            ₹1000 - ₹2000
+            ₹1000-₹2000
           </Button>
           <Button
-            variant="outline"
+            variant={
+              priceRange[0] === 2000 && priceRange[1] === 5000
+                ? "default"
+                : "outline"
+            }
             size="sm"
-            className="w-full justify-start bg-transparent"
+            className="h-9 text-xs sm:text-sm justify-start"
             onClick={() => setPriceRange([2000, 5000])}
           >
             Above ₹2000
@@ -324,7 +356,7 @@ export default function ProductsPage() {
               <SheetHeader>
                 <SheetTitle>Filters</SheetTitle>
               </SheetHeader>
-              <div className="mt-6">
+              <div className="">
                 <FilterContent />
               </div>
             </SheetContent>
@@ -399,7 +431,7 @@ export default function ProductsPage() {
               ))}
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className=" flex flex-col gap-2">
               {filteredProducts.map((product) => (
                 <Link key={product.id} href={`/product/${product.id}`}>
                   <Card className="group cursor-pointer hover:shadow-lg transition-shadow">

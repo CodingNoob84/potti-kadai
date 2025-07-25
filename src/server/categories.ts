@@ -3,6 +3,7 @@ import { db } from "@/db/drizzle";
 import {
   categories,
   categorySubcategories,
+  sizes,
   subcategories,
 } from "@/db/schema/products";
 import {
@@ -216,3 +217,69 @@ export const deleteSubCategory = async (subcategoryId: number) => {
 
   return { result: "deleted", subcategoryId };
 };
+
+export const getAllSizesWithCategory = async () => {
+  return await db
+    .select({
+      id: sizes.id,
+      name: sizes.name,
+      sizenumber: sizes.sizenumber,
+      indiaSize: sizes.indiaSize,
+      usSize: sizes.usSize,
+      euSize: sizes.euSize,
+      ukSize: sizes.ukSize,
+      type: sizes.type,
+      categoryId: sizes.categoryId,
+      categoryName: categories.name,
+    })
+    .from(sizes)
+    .innerJoin(categories, eq(sizes.categoryId, categories.id));
+};
+
+type NewSizeInput = {
+  name: string;
+  ukSize?: string;
+  usSize?: string;
+  euSize?: string;
+  indiaSize?: string;
+  categoryId: number;
+  type: string;
+};
+
+export async function addSize(input: NewSizeInput) {
+  await db.insert(sizes).values({
+    name: input.name,
+    ukSize: input.ukSize ?? null,
+    usSize: input.usSize ?? null,
+    euSize: input.euSize ?? null,
+    indiaSize: input.indiaSize ?? null,
+    categoryId: input.categoryId,
+    type: input.type,
+  });
+}
+
+type UpdateSizeInput = {
+  id: number;
+  name: string;
+  ukSize?: string;
+  usSize?: string;
+  euSize?: string;
+  indiaSize?: string;
+  categoryId: number;
+  type: string;
+};
+
+export async function updateSize(input: UpdateSizeInput) {
+  await db
+    .update(sizes)
+    .set({
+      name: input.name,
+      ukSize: input.ukSize ?? null,
+      usSize: input.usSize ?? null,
+      euSize: input.euSize ?? null,
+      indiaSize: input.indiaSize ?? null,
+      categoryId: input.categoryId,
+      type: input.type,
+    })
+    .where(eq(sizes.id, input.id));
+}
