@@ -209,8 +209,8 @@ export const productReviews = pgTable("product_reviews", {
     .references(() => products.id, { onDelete: "cascade" })
     .notNull(),
 
-  userId: integer("user_id")
-    .references(() => user.id, { onDelete: "cascade" })
+  userId: text("user_id")
+    .references(() => user.id)
     .notNull(),
 
   rating: integer("rating").notNull(),

@@ -14,6 +14,7 @@ export interface Size {
   usSize: string;
   ukSize: string;
   euSize: string;
+  pvId: number;
 }
 
 interface SizeSystemOption {

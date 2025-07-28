@@ -1,11 +1,13 @@
 "use server";
 import { db } from "@/db/drizzle";
+import { user } from "@/db/schema/auth";
 import {
   categories,
   colors,
   discounts,
   productGenders,
   productImages,
+  productReviews,
   products,
   productTags,
   productVariants,
@@ -13,7 +15,7 @@ import {
   sizes,
   subcategories,
 } from "@/db/schema/products";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, avg, eq, inArray, sql } from "drizzle-orm";
 
 export async function getSizes() {
   return await db.select().from(sizes);
@@ -332,6 +334,7 @@ export type ProductDetail = {
   }[];
 };
 
+//Website/Id
 export const getProductById = async (productId: number) => {
   // 1. Fetch basic product info with category, subcategory
   const productData = await db
@@ -366,8 +369,7 @@ export const getProductById = async (productId: number) => {
       minQuantity: discounts.minQuantity,
     })
     .from(discounts)
-    .where(eq(discounts.productId, productId))
-    .then((res) => res[0] || null);
+    .where(eq(discounts.productId, productId));
 
   // 4. Fetch inventory and group by color
   const variants = await db
@@ -382,6 +384,7 @@ export const getProductById = async (productId: number) => {
       usSize: sizes.usSize,
       ukSize: sizes.ukSize,
       euSize: sizes.euSize,
+      productVariantId: productVariants.id,
     })
     .from(productVariants)
     .innerJoin(sizes, eq(productVariants.sizeId, sizes.id))
@@ -402,6 +405,7 @@ export const getProductById = async (productId: number) => {
       usSize: string;
       ukSize: string;
       euSize: string;
+      pvId: number;
     }[];
   };
 
@@ -424,14 +428,43 @@ export const getProductById = async (productId: number) => {
       usSize: v.usSize ?? "-",
       ukSize: v.ukSize ?? "-",
       euSize: v.euSize ?? "-",
+      pvId: v.productVariantId,
     });
   }
+
+  // 5. Average rating
+  const ratingRes = await db
+    .select({ rating: avg(productReviews.rating).as("rating") })
+    .from(productReviews)
+    .where(eq(productReviews.productId, productId))
+    .then((res) => res[0]?.rating ?? 0.0);
+
+  const averageRating = parseFloat(Number(ratingRes).toFixed(1)) || 0;
+
+  // 6. Reviews list
+  const reviews = await db
+    .select({
+      id: productReviews.id,
+      userId: productReviews.userId,
+      rating: productReviews.rating,
+      comment: productReviews.comment,
+      createdAt: productReviews.createdAt,
+      userName: user.name, // Optional
+      userEmail: user.email, // Optional
+      userImage: user.image,
+    })
+    .from(productReviews)
+    .where(eq(productReviews.productId, productId))
+    .leftJoin(user, eq(productReviews.userId, user.id))
+    .orderBy(productReviews.createdAt);
 
   return {
     ...productData,
     images,
     discount,
     inventory: Array.from(colorMap.values()),
+    rating: averageRating,
+    reviews,
   };
 };
 
@@ -694,4 +727,47 @@ export const getProductDetailsByIdEdit = async (
   };
 
   return productDetail;
+};
+
+export const getProductRatings = async () => {
+  const result = await db
+    .select({
+      id: products.id,
+      productName: products.name,
+      averageRating: sql<number>`COALESCE(AVG(${productReviews.rating}), 0)`,
+      totalReviews: sql<number>`COALESCE(COUNT(${productReviews.id}), 0)`,
+    })
+    .from(products)
+    .leftJoin(productReviews, eq(products.id, productReviews.productId))
+    .groupBy(products.id, products.name)
+    .limit(10);
+
+  const parsedResult = result.map((item) => ({
+    ...item,
+    averageRating: parseFloat(item.averageRating as unknown as string),
+    totalReviews: parseInt(item.totalReviews as unknown as string, 10),
+  }));
+
+  return parsedResult;
+};
+
+export const getProductReviews = async (productId: number) => {
+  const result = await db
+    .select({
+      id: productReviews.id,
+      userId: productReviews.userId,
+      rating: productReviews.rating,
+      comment: productReviews.comment,
+      createdAt: productReviews.createdAt,
+      updatedAt: productReviews.updatedAt,
+      userName: user.name,
+      userEmail: user.email,
+      userImage: user.image,
+    })
+    .from(productReviews)
+    .where(eq(productReviews.productId, productId))
+    .leftJoin(user, eq(productReviews.userId, user.id)) // Optional
+    .orderBy(productReviews.createdAt); // Most recent last (or use `desc()`)
+
+  return result;
 };

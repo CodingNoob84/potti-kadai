@@ -1,15 +1,19 @@
 "use client";
 
-import { ImageGallery } from "@/components/product-details/images";
-import { ProductDetailSkeleton } from "@/components/product-details/product-details-skeleton";
-import { Size, SizeSelector } from "@/components/product-details/size-selector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ImageGallery } from "@/components/website/product-details/images";
+import { ProductDetailSkeleton } from "@/components/website/product-details/product-details-skeleton";
+import {
+  Size,
+  SizeSelector,
+} from "@/components/website/product-details/size-selector";
 import { getProductById } from "@/server/products";
+import { useCartStore } from "@/store/cart-store";
 import { useQuery } from "@tanstack/react-query";
 import {
   Heart,
@@ -20,18 +24,13 @@ import {
   ShoppingCart,
   Star,
   Truck,
+  User,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
-// Helper function to generate random rating between 3.5 and 5
-const getReviewRating = () => {
-  const rating = (Math.random() * 1.5 + 3.5).toFixed(1);
-  const reviews = Math.floor(Math.random() * 91) + 10;
-  return { rating, reviews };
-};
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -42,6 +41,8 @@ export default function ProductDetailPage() {
     queryFn: () => getProductById(productId),
     enabled: !!productId,
   });
+  console.log("data", product);
+  const addToCart = useCartStore((state) => state.addToCart);
 
   const [selectedSizeId, setSelectedSizeId] = useState<number | null>(null);
   const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
@@ -79,9 +80,8 @@ export default function ProductDetailPage() {
     return <div>Product not found</div>;
   }
 
-  const { rating, reviews } = getReviewRating();
   const discountPercentage =
-    product.discount?.type === "direct" ? product.discount.value : 0;
+    product.discount?.find((d) => d.type === "direct")?.value || 0;
   const discountedPrice =
     product.price - (product.price * discountPercentage) / 100;
   const totalPrice = product.price * quantity;
@@ -89,8 +89,12 @@ export default function ProductDetailPage() {
   const savings = totalPrice - totalDiscountedPrice;
 
   const handleAddToCart = () => {
-    if (!selectedSizeId || !selectedColorId) {
-      toast.error("Please select size and color");
+    if (!selectedColorId) {
+      toast.error("Please select any color");
+      return;
+    }
+    if (!selectedSizeId) {
+      toast.error("Please select any size");
       return;
     }
 
@@ -102,6 +106,18 @@ export default function ProductDetailPage() {
     );
 
     toast.success("Added to cart");
+    const newItem = {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      discountedPrice: discountedPrice,
+      quantity: quantity,
+      image: product.images[0].url,
+      color: selectedColor?.name ?? "",
+      size: selectedSize?.name ?? "",
+      pvId: selectedSize?.pvId ?? 0,
+    };
+    addToCart(newItem);
     console.log("Added to cart:", {
       productId: product.id,
       colorId: selectedColorId,
@@ -177,14 +193,14 @@ export default function ProductDetailPage() {
                   <Star
                     key={i}
                     className={`h-4 w-4 ${
-                      i < Math.floor(Number(rating))
+                      i < product.rating
                         ? "fill-yellow-400 text-yellow-400"
                         : "fill-muted text-muted-foreground"
                     }`}
                   />
                 ))}
                 <span className="ml-1 text-sm text-muted-foreground">
-                  {rating} ({reviews} reviews)
+                  {product.rating} ({product.reviews.length} reviews)
                 </span>
               </div>
             </div>
@@ -377,33 +393,63 @@ export default function ProductDetailPage() {
               </h3>
 
               <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="bg-green-100 text-green-800 rounded-full p-1.5">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
+                {product.discount.map((discount, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <div
+                      className={`${
+                        discount.type === "quantity"
+                          ? "bg-purple-100 text-purple-800"
+                          : "bg-green-100 text-green-800"
+                      } rounded-full p-1.5`}
                     >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                      {discount.type === "quantity" ? (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z" />
+                        </svg>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {discount.type === "quantity"
+                          ? `Bulk Discount: ${discount.value}% Off`
+                          : `${discount.value}% Instant Discount`}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {discount.type === "quantity"
+                          ? `Buy ${discount.minQuantity}+ items and get ${discount.value}% off`
+                          : `Get ${discount.value}% off on your order`}
+                      </p>
+                      <div className="flex items-center mt-1">
+                        <p className="text-xs text-blue-600 font-medium mr-2">
+                          T&C Apply
+                        </p>
+                        {discount.type === "quantity" && (
+                          <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                            Bulk Deal
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      10% Special Discount
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Get extra 10% off on orders above ₹1000
-                    </p>
-                    <p className="text-xs text-blue-600 mt-1 font-medium">
-                      T&C Apply
-                    </p>
-                  </div>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -415,7 +461,9 @@ export default function ProductDetailPage() {
         <Tabs defaultValue="details" className="w-full">
           <TabsList className="grid w-full grid-cols-2 max-w-xs">
             <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="reviews">Reviews ({reviews})</TabsTrigger>
+            <TabsTrigger value="reviews">
+              Reviews ({product.reviews.length})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="details" className="mt-4">
@@ -447,32 +495,59 @@ export default function ProductDetailPage() {
 
           <TabsContent value="reviews" className="mt-4">
             <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <Card key={i}>
+              {product.reviews.map((review) => (
+                <Card
+                  key={review.id}
+                  className="border shadow-sm hover:shadow-md transition-shadow"
+                >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="font-medium">Customer {i + 1}</h4>
-                        <div className="flex items-center mt-1">
-                          {[...Array(5)].map((_, j) => (
-                            <Star
-                              key={j}
-                              className={`h-3 w-3 ${
-                                j < Math.floor(Math.random() * 2 + 3)
-                                  ? "fill-yellow-400 text-yellow-400"
-                                  : "fill-muted text-muted-foreground"
-                              }`}
+                      <div className="flex items-start gap-3">
+                        <div className="flex items-center justify-center h-10 w-10 rounded-full bg-muted">
+                          {review.userImage ? (
+                            <Image
+                              src={review.userImage}
+                              alt={review.userName || "User"}
+                              className="h-full w-full rounded-full object-cover"
                             />
-                          ))}
+                          ) : (
+                            <User className="h-5 w-5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium">
+                            {review.userName || "Anonymous User"}
+                          </h4>
+                          <div className="flex items-center mt-1 gap-1">
+                            {[...Array(5)].map((_, index) => (
+                              <Star
+                                key={index}
+                                className={`h-4 w-4 ${
+                                  index < review.rating
+                                    ? "fill-yellow-400 text-yellow-400"
+                                    : "fill-muted text-muted-foreground"
+                                }`}
+                              />
+                            ))}
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              {review.rating.toFixed(1)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {new Date().toLocaleDateString()}
+                        {review.createdAt?.toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
                       </span>
                     </div>
-                    <p className="text-muted-foreground text-sm">
-                      This is a sample review for demonstration purposes.
-                    </p>
+                    {review.comment && (
+                      <p className="text-muted-foreground text-sm mt-3">
+                        {review.comment}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               ))}

@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,13 +21,13 @@ import {
   Menu,
   Search,
   Shirt,
-  ShoppingCart,
   ShirtIcon as TShirt,
   User,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { CartSheet } from "../website/cart/cart-sheet";
 
 const categories = {
   trending: [
@@ -148,7 +147,6 @@ const categories = {
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [cartCount] = useState(3); // This would come from your cart state
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -179,16 +177,7 @@ export default function Navbar() {
           </Button>
 
           {/* Cart */}
-          <Link href="/cart">
-            <Button variant="ghost" size="icon" className="relative">
-              <ShoppingCart className="h-5 w-5" />
-              {cartCount > 0 && (
-                <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                  {cartCount}
-                </Badge>
-              )}
-            </Button>
-          </Link>
+          <CartSheet />
 
           {/* Account */}
           <DropdownMenu>
