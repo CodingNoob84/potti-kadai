@@ -1,21 +1,11 @@
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { sizeTypes } from "@/types/products";
 import { FlagIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner"; // or your preferred toast library
 
 type SizeSystem = "name" | "indiaSize" | "usSize" | "ukSize" | "euSize";
-
-export interface Size {
-  sizeId: number;
-  name: string;
-  quantity: number;
-  indiaSize: string;
-  usSize: string;
-  ukSize: string;
-  euSize: string;
-  pvId: number;
-}
 
 interface SizeSystemOption {
   label: string;
@@ -23,7 +13,7 @@ interface SizeSystemOption {
 }
 
 interface SizeSelectorProps {
-  sizes: Size[];
+  sizes: sizeTypes[];
   onSizeSelect?: (sizeId: number) => void;
 }
 

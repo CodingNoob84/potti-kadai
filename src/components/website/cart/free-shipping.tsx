@@ -2,30 +2,33 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useCartStore } from "@/store/cart-store";
 import { motion } from "framer-motion";
 import { Truck } from "lucide-react";
 
-export const FreeShippingProgress = () => {
-  const { totalPrice } = useCartStore();
-  const subtotal = totalPrice();
-  console.log("--", subtotal);
-  const freeShippingThreshold = 1000;
+export const FreeShippingProgress = ({
+  totalAmount,
+}: {
+  totalAmount: number;
+}) => {
+  const freeShippingThreshold = 2000;
   const progressToFreeShipping = Math.min(
-    (subtotal / freeShippingThreshold) * 100,
+    (totalAmount / freeShippingThreshold) * 100,
     100
   );
-  const amountForFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
+  const amountForFreeShipping = Math.max(
+    0,
+    freeShippingThreshold - totalAmount
+  );
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      key={`shipping-${subtotal}`} // This ensures re-animation when subtotal changes
+      key={`shipping-${totalAmount}`} // This ensures re-animation when subtotal changes
     >
       <Card
         className={`mt-4 ${
-          subtotal >= freeShippingThreshold
+          totalAmount >= freeShippingThreshold
             ? "bg-green-50 border-green-200"
             : "bg-blue-50 border-blue-200"
         }`}
@@ -36,41 +39,41 @@ export const FreeShippingProgress = () => {
               <motion.div
                 animate={{
                   rotate:
-                    subtotal >= freeShippingThreshold ? [0, 15, -15, 0] : 0,
+                    totalAmount >= freeShippingThreshold ? [0, 15, -15, 0] : 0,
                 }}
                 transition={{ duration: 0.7 }}
               >
                 <Truck
                   className={`h-4 w-4 ${
-                    subtotal >= freeShippingThreshold
+                    totalAmount >= freeShippingThreshold
                       ? "text-green-600"
                       : "text-blue-600"
                   }`}
                 />
               </motion.div>
               <motion.span
-                key={`message-${subtotal}`}
+                key={`message-${totalAmount}`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="text-sm font-semibold"
               >
-                {subtotal >= freeShippingThreshold
+                {totalAmount >= freeShippingThreshold
                   ? "You get FREE shipping!"
                   : "Free Shipping Progress"}
               </motion.span>
             </div>
             <motion.span
-              key={`amount-${subtotal}`}
+              key={`amount-${totalAmount}`}
               initial={{ scale: 1.1 }}
               animate={{ scale: 1 }}
               className="text-xs font-medium"
             >
-              ₹{subtotal} / ₹{freeShippingThreshold}
+              ₹{totalAmount} / ₹{freeShippingThreshold}
             </motion.span>
           </div>
 
           <motion.div
-            key={`progress-${subtotal}`}
+            key={`progress-${totalAmount}`}
             initial={{ width: 0 }}
             animate={{ width: "100%" }}
             transition={{ duration: 2 }}
@@ -78,7 +81,7 @@ export const FreeShippingProgress = () => {
             <Progress
               value={progressToFreeShipping}
               className={`h-2 ${
-                subtotal >= freeShippingThreshold
+                totalAmount >= freeShippingThreshold
                   ? "[&>div]:bg-green-500"
                   : `[&>div]:bg-blue-500 ${
                       progressToFreeShipping > 80 ? "animate-pulse" : ""
@@ -89,13 +92,13 @@ export const FreeShippingProgress = () => {
 
           <div className="flex justify-between items-center mt-2">
             <motion.span
-              key={`hint-${subtotal}`}
+              key={`hint-${totalAmount}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
               className="text-xs text-muted-foreground"
             >
-              {subtotal >= freeShippingThreshold
+              {totalAmount >= freeShippingThreshold
                 ? "You saved ₹99 on shipping!"
                 : `Add ₹${amountForFreeShipping} more for free shipping`}
             </motion.span>

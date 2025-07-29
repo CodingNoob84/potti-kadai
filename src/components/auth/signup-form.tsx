@@ -9,7 +9,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authClient } from "@/lib/auth-client";
+import { signUp } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 
 // Schema
@@ -54,7 +54,7 @@ export const SignUpForm = () => {
   const onSubmit = async (data: SignUpType) => {
     console.log("Submitted:", data);
     //alert(`Signup success:\n${JSON.stringify(data, null, 2)}`);
-    const { error } = await authClient.signUp.email(
+    const { error } = await signUp.email(
       {
         email: data.email,
         password: data.password,

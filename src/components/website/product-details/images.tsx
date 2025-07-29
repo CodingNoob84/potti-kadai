@@ -120,6 +120,7 @@ export function ImageGallery({
                   src={image.url || "/placeholder.svg"}
                   alt={image.alt || `Thumbnail ${index + 1}`}
                   fill
+                  priority
                   className="object-cover"
                 />
               </button>

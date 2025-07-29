@@ -22,16 +22,24 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { productCreateType } from "@/form-schemas/product";
 import { getColors, getSizesByOptions } from "@/server/products";
-import {
-  colorsTypes,
-  DefaultsizeTypes,
-  inventoryType,
-  sizeTypes,
-} from "@/types/products";
+import { colorsTypes, DefaultsizeTypes } from "@/types/products";
 import { useQuery } from "@tanstack/react-query";
 import { Info, Search, Trash2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { UseFormReturn } from "react-hook-form";
+
+type sizeType = {
+  quantity: number;
+  name: string;
+  sizeId: number;
+};
+
+type InventoryType = {
+  name: string;
+  sizes: sizeType[];
+  colorCode: string;
+  colorId: number;
+};
 
 export const InventoryManagement = ({
   form,
@@ -68,7 +76,7 @@ export const InventoryManagement = ({
   const totalQuantity = useMemo(
     () =>
       inventory.reduce(
-        (total: number, item: inventoryType) =>
+        (total: number, item: InventoryType) =>
           total + item.sizes.reduce((sum, s) => sum + s.quantity, 0),
         0
       ),
@@ -77,7 +85,7 @@ export const InventoryManagement = ({
 
   const addColor = useCallback(
     (color: colorsTypes) => {
-      if (inventory.some((i: inventoryType) => i.colorId === color.id)) return;
+      if (inventory.some((i: InventoryType) => i.colorId === color.id)) return;
 
       const selectedSizes =
         sizesdata?.map((s: DefaultsizeTypes) => ({
@@ -107,7 +115,7 @@ export const InventoryManagement = ({
     (colorId: number) => {
       setValue(
         "inventory",
-        inventory.filter((i: inventoryType) => i.colorId !== colorId),
+        inventory.filter((i: InventoryType) => i.colorId !== colorId),
         { shouldValidate: true }
       );
     },
@@ -118,11 +126,11 @@ export const InventoryManagement = ({
     (colorId: number, sizeId: number, quantity: number) => {
       setValue(
         "inventory",
-        inventory.map((i: inventoryType) =>
+        inventory.map((i: InventoryType) =>
           i.colorId === colorId
             ? {
                 ...i,
-                sizes: i.sizes.map((s: sizeTypes) =>
+                sizes: i.sizes.map((s: sizeType) =>
                   s.sizeId === sizeId ? { ...s, quantity } : s
                 ),
               }
@@ -181,7 +189,7 @@ export const InventoryManagement = ({
               </Popover>
 
               <div className="flex flex-wrap gap-2">
-                {inventory.map((item: inventoryType) => (
+                {inventory.map((item: InventoryType) => (
                   <Badge
                     key={item.colorId}
                     variant="outline"
@@ -227,7 +235,7 @@ export const InventoryManagement = ({
                   ))}
                 </div>
               ) : inventory.length > 0 ? (
-                inventory.map((colorItem: inventoryType) => (
+                inventory.map((colorItem: InventoryType) => (
                   <div
                     key={colorItem.colorId}
                     className="border rounded-md p-4 space-y-2"
@@ -251,7 +259,7 @@ export const InventoryManagement = ({
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                      {colorItem.sizes.map((size: sizeTypes) => (
+                      {colorItem.sizes.map((size: sizeType) => (
                         <div key={size.sizeId} className="flex flex-col gap-1">
                           <Label>{size.name}</Label>
                           <Input

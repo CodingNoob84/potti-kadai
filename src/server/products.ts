@@ -317,11 +317,14 @@ export type ProductDetail = {
   description: string | null;
   price: number;
   isActive: boolean;
-  category: string;
+  category: string | null;
   subcategory: string | null;
-  images: { url: string }[];
-  discounts: { type: string; value: number; quantity?: number }[];
-  promocodes: { type: string; promocode: string; value: number }[];
+  images: { url: string; colorId: number | null }[];
+  discounts: {
+    type: string;
+    value: number;
+    minQuantity: number | null;
+  }[];
   inventory: {
     colorId: number;
     name: string;
@@ -330,12 +333,30 @@ export type ProductDetail = {
       sizeId: number;
       name: string;
       quantity: number;
+      indiaSize: string;
+      usSize: string;
+      ukSize: string;
+      euSize: string;
+      pvId: number;
     }[];
+  }[];
+  rating: number;
+  reviews: {
+    id: number;
+    userId: string;
+    rating: number;
+    comment: string | null;
+    createdAt: Date | null;
+    userName: string | null;
+    userEmail: string | null;
+    userImage: string | null;
   }[];
 };
 
 //Website/Id
-export const getProductById = async (productId: number) => {
+export const getProductById = async (
+  productId: number
+): Promise<ProductDetail | null> => {
   // 1. Fetch basic product info with category, subcategory
   const productData = await db
     .select({
@@ -461,7 +482,7 @@ export const getProductById = async (productId: number) => {
   return {
     ...productData,
     images,
-    discount,
+    discounts: discount,
     inventory: Array.from(colorMap.values()),
     rating: averageRating,
     reviews,

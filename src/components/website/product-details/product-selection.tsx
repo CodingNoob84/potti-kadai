@@ -1,159 +1,326 @@
-// import { Star } from "lucide-react";
-// import { Label } from "../ui/label";
-// import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
-// import { SizeSelector } from "./size-selector";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useSession } from "@/lib/auth-client";
+import { addToCart, CartItemDetail } from "@/server/cart";
+import { ProductDetail } from "@/server/products";
+import { sizeTypes } from "@/types/products";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Heart,
+  Minus,
+  Plus,
+  RotateCcw,
+  Shield,
+  ShoppingCart,
+  Star,
+  Truck,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { SizeSelector } from "./size-selector";
 
-// export const ProductSelection=()=>{
-//     return(
-//         <div className="space-y-5">
-//                   <div>
-//                     <h1 className="text-2xl font-bold mb-1">{product.name}</h1>
-//                     <div className="flex items-center space-x-3 mb-3">
-//                       <div className="flex items-center">
-//                         {[...Array(5)].map((_, i) => (
-//                           <Star
-//                             key={i}
-//                             className={`h-4 w-4 ${
-//                               i < Math.floor(Number(rating))
-//                                 ? "fill-yellow-400 text-yellow-400"
-//                                 : "fill-muted text-muted-foreground"
-//                             }`}
-//                           />
-//                         ))}
-//                         <span className="ml-1 text-sm text-muted-foreground">
-//                           {rating} ({reviews} reviews)
-//                         </span>
-//                       </div>
-//                     </div>
+type ProductSelectionProps = {
+  product: ProductDetail;
+  discountedPercentage: number;
+  discountedPrice: number;
+  quantity: number;
+  setQuantity: (quantity: number) => void;
+  selectedColorId: number | null;
+  setSelectedColorId: (selectedColorId: number) => void;
+};
 
-//                     <div className="flex items-center space-x-3 mb-4">
-//                       {discountPercentage > 0 ? (
-//                         <>
-//                           <span className="text-2xl font-bold">
-//                             ₹{discountedPrice.toFixed(2)}
-//                           </span>
-//                           <span className="text-lg text-muted-foreground line-through">
-//                             ₹{product.price}
-//                           </span>
-//                           <Badge className="bg-red-500">
-//                             {discountPercentage}% OFF
-//                           </Badge>
-//                         </>
-//                       ) : (
-//                         <span className="text-2xl font-bold">₹{product.price}</span>
-//                       )}
-//                     </div>
-//                   </div>
+type ImageArrType = {
+  url: string;
+  alt?: string;
+  colorId: number | null;
+};
 
-//                   <p className="text-muted-foreground text-sm">{product.description}</p>
+export const getImage = (images: ImageArrType[], colorId: number) => {
+  const filtered = images.filter((i) => i.colorId === colorId);
+  return filtered.length > 0 ? filtered : images.slice(0, 1); // fallback to first image
+};
 
-//                   {/* Color Selection */}
-//                   <div>
-//                     <Label className="text-sm font-medium mb-2 block">Color</Label>
-//                     <RadioGroup
-//                       value={selectedColor}
-//                       onValueChange={setSelectedColor}
-//                       className="flex flex-wrap gap-2"
-//                     >
-//                       {product.inventory.map((color) => (
-//                         <div key={color.colorId}>
-//                           <RadioGroupItem
-//                             value={color.name}
-//                             id={`color-${color.colorId}`}
-//                             className="peer sr-only"
-//                           />
-//                           <Label
-//                             htmlFor={`color-${color.colorId}`}
-//                             className={`flex items-center justify-center px-3 py-1.5 text-sm border rounded-md cursor-pointer ${
-//                               selectedColor === color.name
-//                                 ? "border-primary bg-primary/10"
-//                                 : "hover:border-primary/50"
-//                             }`}
-//                           >
-//                             {color.name}
-//                           </Label>
-//                         </div>
-//                       ))}
-//                     </RadioGroup>
-//                   </div>
+export const ProductSelection = ({
+  product,
+  discountedPercentage,
+  discountedPrice,
+  quantity,
+  setQuantity,
+  selectedColorId,
+  setSelectedColorId,
+}: ProductSelectionProps) => {
+  const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const user = session?.user;
 
-//                   {/* Size Selection */}
-//                   {availableSizes.length > 0 && (
-//                     <SizeSelector
-//                       sizes={availableSizes}
-//                       onSizeSelect={(sizeId) => {
-//                         const size = availableSizes.find((s) => s.sizeId === sizeId);
-//                         if (size) {
-//                           setSelectedSize(size.name);
-//                         }
-//                       }}
-//                     />
-//                   )}
+  const [selectedSizeId, setSelectedSizeId] = useState<number | null>(null);
 
-//                   {/* Quantity */}
-//                   <div>
-//                     <Label className="text-sm font-medium mb-2 block">Quantity</Label>
-//                     <div className="flex items-center space-x-2">
-//                       <Button
-//                         variant="outline"
-//                         size="sm"
-//                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
-//                         disabled={quantity <= 1}
-//                       >
-//                         <Minus className="h-3 w-3" />
-//                       </Button>
-//                       <span className="w-10 text-center font-medium">{quantity}</span>
-//                       <Button
-//                         variant="outline"
-//                         size="sm"
-//                         onClick={() => setQuantity(quantity + 1)}
-//                       >
-//                         <Plus className="h-3 w-3" />
-//                       </Button>
-//                     </div>
-//                   </div>
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [availableSizes, setAvailableSizes] = useState<sizeTypes[]>([]);
 
-//                   {/* Action Buttons */}
-//                   <div className="flex flex-col sm:flex-row gap-3 pt-2">
-//                     <Button size="sm" className="flex-1 py-2" onClick={handleAddToCart}>
-//                       <ShoppingCart className="h-4 w-4 mr-2" />
-//                       Add to Cart
-//                     </Button>
-//                     <Button
-//                       size="sm"
-//                       variant="outline"
-//                       className="flex-1 py-1"
-//                       onClick={handleBuyNow}
-//                     >
-//                       Buy Now
-//                     </Button>
-//                     <Button
-//                       size="sm"
-//                       variant="outline"
-//                       onClick={() => setIsWishlisted(!isWishlisted)}
-//                       className={isWishlisted ? "text-red-500 border-red-500" : ""}
-//                     >
-//                       <Heart
-//                         className={`h-4 w-4 ${isWishlisted ? "fill-current" : ""}`}
-//                       />
-//                     </Button>
-//                   </div>
+  const addToCartMutation = useMutation({
+    mutationFn: addToCart,
+    onMutate: async (newItem) => {
+      await queryClient.cancelQueries({ queryKey: ["cartitems", user?.id] });
 
-//                   {/* Features */}
-//                   <div className="grid grid-cols-3 gap-3 pt-4">
-//                     <div className="flex flex-col items-center text-center">
-//                       <Truck className="h-5 w-5 text-primary mb-1" />
-//                       <span className="text-xs">Free Shipping</span>
-//                     </div>
-//                     <div className="flex flex-col items-center text-center">
-//                       <RotateCcw className="h-5 w-5 text-primary mb-1" />
-//                       <span className="text-xs">Easy Returns</span>
-//                     </div>
-//                     <div className="flex flex-col items-center text-center">
-//                       <Shield className="h-5 w-5 text-primary mb-1" />
-//                       <span className="text-xs">Secure Payment</span>
-//                     </div>
-//                   </div>
-//                 </div>
-//     )
-// }
+      const previousCart = queryClient.getQueryData<CartItemDetail[]>([
+        "cartitems",
+        user?.id,
+      ]);
+
+      const alreadyInCart = previousCart?.find(
+        (item) => item.pvId === newItem.productVariantId
+      );
+      const selectedColor = product.inventory.find(
+        (c) => c.colorId === selectedColorId
+      );
+      const selectedSize = availableSizes.find(
+        (s) => s.sizeId === selectedSizeId
+      );
+
+      let updatedCart;
+      const newCartItem = {
+        cartItemId: -1,
+        productId: newItem.productId,
+        name: product.name,
+        price: product.price,
+        imageUrl: product.images[0].url,
+        quantity: newItem.quantity,
+        pvId: newItem.productVariantId,
+        colorId: selectedColorId,
+        colorName: selectedColor?.name,
+        sizeId: selectedSizeId,
+        sizeName: selectedSize?.name,
+        discountedPercentage: discountedPercentage,
+        discountedPrice: discountedPrice,
+      };
+      if (alreadyInCart) {
+        updatedCart = previousCart?.map((item) =>
+          item.pvId === newItem.productVariantId
+            ? { ...item, quantity: item.quantity + (newItem.quantity ?? 0) }
+            : item
+        );
+      } else {
+        updatedCart = [...(previousCart ?? []), newCartItem];
+      }
+
+      queryClient.setQueryData(["cartitems", user?.id], updatedCart);
+
+      return { previousCart };
+    },
+    onError: (err, newItem, context) => {
+      queryClient.setQueryData(["cartitems", user?.id], context?.previousCart);
+      toast.error("Failed to add to cart.");
+    },
+
+    // ✅ Re-fetch after mutation to ensure sync
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["cartitems", user?.id] });
+    },
+  });
+
+  const handleAddToCart = () => {
+    if (!selectedColorId) {
+      toast.error("Please select any color");
+      return;
+    }
+    if (!selectedSizeId) {
+      toast.error("Please select any size");
+      return;
+    }
+
+    const selectedSize = availableSizes.find(
+      (s) => s.sizeId === selectedSizeId
+    );
+
+    toast.success("Added to cart");
+    const newItem = {
+      userId: user?.id ?? "",
+      productId: product.id,
+      productVariantId: selectedSize?.pvId ?? 0,
+      quantity,
+    };
+    addToCartMutation.mutate(newItem);
+  };
+
+  const handleBuyNow = () => {
+    if (!selectedSizeId || !selectedColorId) {
+      toast.error("Please select size and color");
+      return;
+    }
+
+    const selectedSize = availableSizes.find(
+      (s) => s.sizeId === selectedSizeId
+    );
+    const newItem = {
+      userId: user?.id ?? "",
+      productId: product.id,
+      productVariantId: selectedSize?.pvId ?? 0,
+      quantity,
+    };
+    addToCartMutation.mutate(newItem);
+  };
+  useEffect(() => {
+    if (product.inventory && product.inventory?.length > 0) {
+      const firstColor = product.inventory[0];
+      setSelectedColorId(firstColor.colorId);
+      setAvailableSizes(firstColor.sizes);
+    }
+  }, [product.inventory]);
+
+  useEffect(() => {
+    if (selectedColorId) {
+      const colorInventory = product.inventory.find(
+        (color) => color.colorId === selectedColorId
+      );
+      if (colorInventory) {
+        setAvailableSizes(colorInventory.sizes);
+        setSelectedSizeId(null); // Reset size selection when color changes
+      }
+    }
+  }, [selectedColorId, product]);
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold mb-1">{product.name}</h1>
+        <div className="flex items-center space-x-3 mb-3">
+          <div className="flex items-center">
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                className={`h-4 w-4 ${
+                  i < product.rating
+                    ? "fill-yellow-400 text-yellow-400"
+                    : "fill-muted text-muted-foreground"
+                }`}
+              />
+            ))}
+            <span className="ml-1 text-sm text-muted-foreground">
+              {product.rating} ({product.reviews.length} reviews)
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-3 mb-4">
+          {discountedPercentage > 0 ? (
+            <>
+              <span className="text-2xl font-bold">
+                ₹{discountedPrice.toFixed(2)}
+              </span>
+              <span className="text-lg text-muted-foreground line-through">
+                ₹{product.price}
+              </span>
+              <Badge className="bg-red-500">{discountedPercentage}% OFF</Badge>
+            </>
+          ) : (
+            <span className="text-2xl font-bold">₹{product.price}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Color Selection */}
+      <div>
+        <Label className="text-sm font-medium mb-2 block">Color</Label>
+        <RadioGroup
+          value={selectedColorId?.toString() || ""}
+          onValueChange={(value) => setSelectedColorId(Number(value))}
+          className="flex flex-wrap gap-2"
+        >
+          {product.inventory.map((color) => (
+            <div key={color.colorId}>
+              <RadioGroupItem
+                value={color.colorId.toString()}
+                id={`color-${color.colorId}`}
+                className="peer sr-only"
+              />
+              <Label
+                htmlFor={`color-${color.colorId}`}
+                className={`flex items-center justify-center px-3 py-1.5 text-sm border rounded-md cursor-pointer ${
+                  selectedColorId === color.colorId
+                    ? "border-primary bg-primary/10"
+                    : "hover:border-primary/50"
+                }`}
+              >
+                {color.name}
+              </Label>
+            </div>
+          ))}
+        </RadioGroup>
+      </div>
+
+      {/* Size Selection */}
+      {availableSizes.length > 0 && (
+        <SizeSelector
+          sizes={availableSizes}
+          onSizeSelect={(sizeId) => setSelectedSizeId(sizeId)}
+        />
+      )}
+
+      {/* Quantity */}
+      <div>
+        <Label className="text-sm font-medium mb-2 block">Quantity</Label>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+            disabled={quantity <= 1}
+          >
+            <Minus className="h-3 w-3" />
+          </Button>
+          <span className="w-10 text-center font-medium">{quantity}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setQuantity(quantity + 1)}
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        <Button size="sm" className="flex-1 py-2" onClick={handleAddToCart}>
+          <ShoppingCart className="h-4 w-4 mr-2" />
+          Add to Cart
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 py-1"
+          onClick={handleBuyNow}
+        >
+          Buy Now
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setIsWishlisted(!isWishlisted)}
+          className={isWishlisted ? "text-red-500 border-red-500" : ""}
+        >
+          <Heart className={`h-4 w-4 ${isWishlisted ? "fill-current" : ""}`} />
+        </Button>
+      </div>
+
+      {/* Features */}
+      <div className="grid grid-cols-3 gap-3 pt-4">
+        <div className="flex flex-col items-center text-center">
+          <Truck className="h-5 w-5 text-primary mb-1" />
+          <span className="text-xs">Free Shipping</span>
+        </div>
+        <div className="flex flex-col items-center text-center">
+          <RotateCcw className="h-5 w-5 text-primary mb-1" />
+          <span className="text-xs">Easy Returns</span>
+        </div>
+        <div className="flex flex-col items-center text-center">
+          <Shield className="h-5 w-5 text-primary mb-1" />
+          <span className="text-xs">Secure Payment</span>
+        </div>
+      </div>
+    </div>
+  );
+};

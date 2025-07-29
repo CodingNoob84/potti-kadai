@@ -18,9 +18,14 @@ export type colorsTypes = {
 };
 
 export type sizeTypes = {
-  quantity: number;
-  name: string;
   sizeId: number;
+  name: string;
+  quantity: number;
+  indiaSize: string;
+  usSize: string;
+  ukSize: string;
+  euSize: string;
+  pvId: number;
 };
 
 export type inventoryType = {

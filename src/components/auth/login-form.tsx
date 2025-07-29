@@ -3,9 +3,11 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { signIn } from "@/lib/auth-client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -19,6 +21,8 @@ const LoginSchema = z.object({
 type LoginType = z.infer<typeof LoginSchema>;
 
 export const LoginForm = () => {
+  const router = useRouter();
+  const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const {
     register,
@@ -32,9 +36,23 @@ export const LoginForm = () => {
     },
   });
 
-  const onSubmit = (data: LoginType) => {
-    console.log("Submitted values:", data);
-    alert(`Login success:\n${JSON.stringify(data, null, 2)}`);
+  const onSubmit = async (data: LoginType) => {
+    try {
+      const { error } = await signIn.email({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (error) {
+        setError(error.message || "Login failed");
+      } else {
+        // Redirect on success
+        router.push("/");
+      }
+    } catch (err) {
+      console.log("error", err);
+      setError("An unexpected error occurred");
+    }
   };
 
   return (
@@ -96,6 +114,7 @@ export const LoginForm = () => {
       <Button type="submit" className="w-full">
         Sign In
       </Button>
+      {error}
     </form>
   );
 };

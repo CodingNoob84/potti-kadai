@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { CartSheet } from "../website/cart/cart-sheet";
+import { CartButton } from "../website/cart/cart-button";
 
 const categories = {
   trending: [
@@ -177,7 +177,7 @@ export default function Navbar() {
           </Button>
 
           {/* Cart */}
-          <CartSheet />
+          <CartButton />
 
           {/* Account */}
           <DropdownMenu>
