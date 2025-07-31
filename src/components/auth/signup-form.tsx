@@ -9,35 +9,14 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SignUpSchema } from "@/form-schemas/auth";
 import { signUp } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
-
-// Schema
-const SignUpSchema = z
-  .object({
-    firstName: z
-      .string()
-      .min(1, "First name is required")
-      .min(3, "Must be 3+ chars"),
-    lastName: z.string().min(1, "Last name is required"),
-    email: z.string().email("Invalid email"),
-    password: z
-      .string()
-      .min(6, "Must be at least 6 characters")
-      .regex(/[a-z]/, "Must include lowercase letter")
-      .regex(/[A-Z]/, "Must include uppercase letter")
-      .regex(/[0-9]/, "Must include number")
-      .regex(/[^a-zA-Z0-9]/, "Must include special character"),
-    confirmPassword: z.string().min(6, "Confirm password is required"),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
 
 type SignUpType = z.infer<typeof SignUpSchema>;
 
 export const SignUpForm = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -52,8 +31,7 @@ export const SignUpForm = () => {
   });
 
   const onSubmit = async (data: SignUpType) => {
-    console.log("Submitted:", data);
-    //alert(`Signup success:\n${JSON.stringify(data, null, 2)}`);
+    setIsSubmitting(true);
     const { error } = await signUp.email(
       {
         email: data.email,
@@ -62,12 +40,19 @@ export const SignUpForm = () => {
         callbackURL: "/",
       },
       {
-        onSuccess: () => router.push("/"),
-        onError: (ctx) => setError(ctx.error.message || "Sign up failed"),
+        onSuccess: () => {
+          setIsSubmitting(false);
+          router.push("/");
+        },
+        onError: (ctx) => {
+          setIsSubmitting(false);
+          setError(ctx.error.message || "Sign up failed");
+        },
       }
     );
 
     if (error) {
+      setIsSubmitting(false);
       setError(error.message || "Sign up failed");
     }
   };
@@ -178,7 +163,7 @@ export const SignUpForm = () => {
 
       {/* Submit Button */}
       <Button type="submit" className="w-full">
-        Create Account
+        {isSubmitting ? "Creating..." : "Create Account"}
       </Button>
       <div className="flex items-center justify-center">
         {error && (

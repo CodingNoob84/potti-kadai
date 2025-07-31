@@ -36,7 +36,7 @@ export default async function AdminLayout({
       </div>
 
       {/* Desktop Sidebar */}
-      <div className="hidden md:block">
+      <div className="hidden md:block sticky top-0 h-screen w-64 flex-shrink-0 border-r">
         <AdminSidebar />
       </div>
 

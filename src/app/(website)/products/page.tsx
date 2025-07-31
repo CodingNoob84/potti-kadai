@@ -1,10 +1,7 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -19,282 +16,224 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Slider } from "@/components/ui/slider";
-import { Filter, Grid, List, Star } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
+import {
+  CategoryFilter,
+  ColorsFilter,
+  GenderFilter,
+  PriceFilter,
+  RatingsFilter,
+  SubCategoryFilter,
+} from "@/components/website/products/filters-sidebar";
+import { ProductLists } from "@/components/website/products/product-lists";
+import { ChevronDown, ChevronUp, Filter, Grid, List } from "lucide-react";
 import { useState } from "react";
-
-const products = [
-  {
-    id: 1,
-    name: "Classic Cotton T-Shirt",
-    price: 599,
-    originalPrice: 799,
-    image: "/images/products/p_img4.png",
-    rating: 4.5,
-    reviews: 128,
-    category: "mens",
-    subcategory: "tshirts",
-    gender: "men",
-  },
-  {
-    id: 2,
-    name: "Denim Casual Shirt",
-    price: 1299,
-    originalPrice: 1599,
-    image: "/images/products/p_img5.png",
-    rating: 4.3,
-    reviews: 89,
-    category: "mens",
-    subcategory: "shirts",
-    gender: "men",
-  },
-  {
-    id: 3,
-    name: "Formal Trousers",
-    price: 1899,
-    originalPrice: 2299,
-    image: "/images/products/p_img6.png",
-    rating: 4.7,
-    reviews: 156,
-    category: "mens",
-    subcategory: "pants",
-    gender: "men",
-  },
-  {
-    id: 4,
-    name: "Summer Dress",
-    price: 1499,
-    originalPrice: 1899,
-    image: "/images/products/p_img7.png",
-    rating: 4.6,
-    reviews: 203,
-    category: "womens",
-    subcategory: "dresses",
-    gender: "women",
-  },
-  {
-    id: 5,
-    name: "Floral Blouse",
-    price: 899,
-    originalPrice: 1199,
-    image: "/images/products/p_img8.png",
-    rating: 4.2,
-    reviews: 145,
-    category: "womens",
-    subcategory: "shirts",
-    gender: "women",
-  },
-  {
-    id: 6,
-    name: "Kids Polo Shirt",
-    price: 699,
-    originalPrice: 899,
-    image: "/images/products/p_img9.png",
-    rating: 4.4,
-    reviews: 67,
-    category: "kids",
-    subcategory: "tshirts",
-    gender: "kids",
-  },
-  {
-    id: 7,
-    name: "Women's Jeans",
-    price: 1799,
-    originalPrice: 2199,
-    image: "/images/products/p_img10.png",
-    rating: 4.5,
-    reviews: 234,
-    category: "womens",
-    subcategory: "pants",
-    gender: "women",
-  },
-  {
-    id: 8,
-    name: "Men's Hoodie",
-    price: 1999,
-    originalPrice: 2499,
-    image: "/images/products/p_img11.png",
-    rating: 4.8,
-    reviews: 189,
-    category: "mens",
-    subcategory: "hoodies",
-    gender: "men",
-  },
-];
 
 export default function ProductsPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState("featured");
-  const [priceRange, setPriceRange] = useState([0, 5000]);
-  const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000]);
+  const [selectedGenders, setSelectedGenders] = useState<number[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [selectedSubCategories, setSelectedSubCategories] = useState<number[]>(
+    []
+  );
+  const [selectedColors, setSelectedColors] = useState<number[]>([]);
+  const [selectedRatings, setSelectedRatings] = useState<number[]>([]);
 
-  const handleGenderChange = (gender: string, checked: boolean) => {
-    if (checked) {
-      setSelectedGenders([...selectedGenders, gender]);
-    } else {
-      setSelectedGenders(selectedGenders.filter((g) => g !== gender));
-    }
-  };
-
-  const handleCategoryChange = (category: string, checked: boolean) => {
-    if (checked) {
-      setSelectedCategories([...selectedCategories, category]);
-    } else {
-      setSelectedCategories(selectedCategories.filter((c) => c !== category));
-    }
-  };
-
-  const filteredProducts = products.filter((product) => {
-    const genderMatch =
-      selectedGenders.length === 0 || selectedGenders.includes(product.gender);
-    const categoryMatch =
-      selectedCategories.length === 0 ||
-      selectedCategories.includes(product.subcategory);
-    const priceMatch =
-      product.price >= priceRange[0] && product.price <= priceRange[1];
-    return genderMatch && categoryMatch && priceMatch;
+  const [expandedSections, setExpandedSections] = useState({
+    gender: true,
+    category: true,
+    subCategory: true,
+    colors: true,
+    priceFilters: true,
+    ratings: true,
   });
 
-  const FilterContent = () => (
-    <div className="px-4  space-y-8">
-      {/* Gender Filter */}
-      <div>
-        <h3 className="font-semibold text-base mb-4 pb-2 border-b border-gray-100">
-          Gender
-        </h3>
-        <div className="space-y-3 pl-1">
-          {["men", "women", "kids"].map((gender) => (
-            <div key={gender} className="flex items-center space-x-3">
-              <Checkbox
-                id={gender}
-                checked={selectedGenders.includes(gender)}
-                onCheckedChange={(checked: boolean) =>
-                  handleGenderChange(gender, checked as boolean)
-                }
-                className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary"
-              />
-              <Label
-                htmlFor={gender}
-                className="capitalize text-sm font-medium text-gray-700"
-              >
-                {gender}
-              </Label>
-            </div>
-          ))}
-        </div>
-      </div>
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
 
-      {/* Category Filter */}
-      <div>
-        <h3 className="font-semibold text-base mb-4 pb-2 border-b border-gray-100">
-          Categories
-        </h3>
-        <div className="space-y-3 pl-1">
-          {["tshirts", "shirts", "pants", "dresses", "hoodies"].map(
-            (category) => (
-              <div key={category} className="flex items-center space-x-3">
-                <Checkbox
-                  id={category}
-                  checked={selectedCategories.includes(category)}
-                  onCheckedChange={(checked: boolean) =>
-                    handleCategoryChange(category, checked as boolean)
-                  }
-                  className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary"
-                />
-                <Label
-                  htmlFor={category}
-                  className="capitalize text-sm font-medium text-gray-700"
-                >
-                  {category.replace(/([A-Z])/g, " $1").trim()}
-                </Label>
+  const FilterContent = () => {
+    return (
+      <div className="px-4  space-y-8">
+        {/* Gender Filter */}
+        <div className="border-b border-gray-100 pb-2">
+          <button
+            className="flex items-center justify-between w-full font-semibold text-base py-2"
+            onClick={() => toggleSection("gender")}
+          >
+            <div className="flex items-center">
+              Gender
+              {selectedGenders.length > 0 && (
+                <span className="ml-2 text-xs bg-primary text-white rounded-full h-5 w-5 flex items-center justify-center">
+                  {selectedGenders.length}
+                </span>
+              )}
+            </div>
+            {expandedSections.gender ? (
+              <ChevronUp size={18} />
+            ) : (
+              <ChevronDown size={18} />
+            )}
+          </button>
+          {expandedSections.gender && (
+            <div className="pl-1 pt-2">
+              <GenderFilter
+                selectedGenders={selectedGenders}
+                setSelectedGenders={setSelectedGenders}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Category Filter */}
+        <div className="border-b border-gray-100 pb-2">
+          <button
+            className="flex items-center justify-between w-full font-semibold text-base py-2"
+            onClick={() => toggleSection("category")}
+          >
+            <div className="flex items-center">
+              Category
+              {selectedCategories.length > 0 && (
+                <span className="ml-2 text-xs bg-primary text-white rounded-full h-5 w-5 flex items-center justify-center">
+                  {selectedCategories.length}
+                </span>
+              )}
+            </div>
+            {expandedSections.category ? (
+              <ChevronUp size={18} />
+            ) : (
+              <ChevronDown size={18} />
+            )}
+          </button>
+          {expandedSections.category && (
+            <div className="pl-1 pt-2">
+              <CategoryFilter
+                selectedCategories={selectedCategories}
+                setSelectedCategories={setSelectedCategories}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* SubCategory Filter */}
+        {selectedCategories.length > 0 && (
+          <div className="border-b border-gray-100 pb-2">
+            <button
+              className="flex items-center justify-between w-full font-semibold text-base py-2"
+              onClick={() => toggleSection("subCategory")}
+            >
+              <div className="flex items-center">
+                Subcategory
+                {selectedSubCategories.length > 0 && (
+                  <span className="ml-2 text-xs bg-primary text-white rounded-full h-5 w-5 flex items-center justify-center">
+                    {selectedSubCategories.length}
+                  </span>
+                )}
               </div>
-            )
+              {expandedSections.subCategory ? (
+                <ChevronUp size={18} />
+              ) : (
+                <ChevronDown size={18} />
+              )}
+            </button>
+            {expandedSections.subCategory && (
+              <div className="pl-1 pt-2">
+                <SubCategoryFilter
+                  selectedCategories={selectedCategories}
+                  selectedSubCategories={selectedSubCategories}
+                  setSelectedSubCategories={setSelectedSubCategories}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="border-b border-gray-100 pb-2">
+          <button
+            className="flex items-center justify-between w-full font-semibold text-base py-2"
+            onClick={() => toggleSection("colors")}
+          >
+            <div className="flex items-center">
+              Colors
+              {selectedColors.length > 0 && (
+                <span className="ml-2 text-xs bg-primary text-white rounded-full h-5 w-5 flex items-center justify-center">
+                  {selectedColors.length}
+                </span>
+              )}
+            </div>
+            {expandedSections.colors ? (
+              <ChevronUp size={18} />
+            ) : (
+              <ChevronDown size={18} />
+            )}
+          </button>
+          {expandedSections.colors && (
+            <div className="pl-1 pt-2">
+              <ColorsFilter
+                selectedColors={selectedColors}
+                setSelectedColors={setSelectedColors}
+              />
+            </div>
+          )}
+        </div>
+        {/* Quick Price Filters */}
+        <div className="border-b border-gray-100 pb-2">
+          <button
+            className="flex items-center justify-between w-full font-semibold text-base py-2"
+            onClick={() => toggleSection("priceFilters")}
+          >
+            <div>Price Filters</div>
+            {expandedSections.priceFilters ? (
+              <ChevronUp size={18} />
+            ) : (
+              <ChevronDown size={18} />
+            )}
+          </button>
+          {expandedSections.priceFilters && (
+            <div className="pl-1 pt-2">
+              <PriceFilter
+                priceRange={priceRange}
+                setPriceRange={setPriceRange}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="border-b border-gray-100 pb-2">
+          <button
+            className="flex items-center justify-between w-full font-semibold text-base py-2"
+            onClick={() => toggleSection("ratings")}
+          >
+            <div className="flex items-center">
+              Ratings
+              {selectedRatings.length > 0 && (
+                <span className="ml-2 text-xs bg-primary text-white rounded-full h-5 w-5 flex items-center justify-center">
+                  {selectedRatings.length}
+                </span>
+              )}
+            </div>
+            {expandedSections.ratings ? (
+              <ChevronUp size={18} />
+            ) : (
+              <ChevronDown size={18} />
+            )}
+          </button>
+          {expandedSections.ratings && (
+            <div className="pl-1 pt-2 space-y-3">
+              <RatingsFilter
+                selectedRatings={selectedRatings}
+                setSelectedRatings={setSelectedRatings}
+              />
+            </div>
           )}
         </div>
       </div>
-
-      {/* Price Range Filter */}
-      <div>
-        <h3 className="font-semibold text-base mb-4 pb-2 border-b border-gray-100">
-          Price Range
-        </h3>
-        <div className="space-y-4 px-1">
-          <Slider
-            value={priceRange}
-            onValueChange={setPriceRange}
-            max={5000}
-            min={0}
-            step={100}
-            className="w-full [&>span:first-child]:h-2"
-          />
-          <div className="flex justify-between text-sm text-gray-500">
-            <span>₹{priceRange[0]}</span>
-            <span>₹{priceRange[1]}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Price Filters */}
-      <div>
-        <h3 className="font-semibold text-base mb-4 pb-2 border-b border-gray-100">
-          Price Filters
-        </h3>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant={
-              priceRange[0] === 0 && priceRange[1] === 500
-                ? "default"
-                : "outline"
-            }
-            size="sm"
-            className="h-9 text-xs sm:text-sm justify-start"
-            onClick={() => setPriceRange([0, 500])}
-          >
-            Under ₹500
-          </Button>
-          <Button
-            variant={
-              priceRange[0] === 500 && priceRange[1] === 1000
-                ? "default"
-                : "outline"
-            }
-            size="sm"
-            className="h-9 text-xs sm:text-sm justify-start"
-            onClick={() => setPriceRange([500, 1000])}
-          >
-            ₹500-₹1000
-          </Button>
-          <Button
-            variant={
-              priceRange[0] === 1000 && priceRange[1] === 2000
-                ? "default"
-                : "outline"
-            }
-            size="sm"
-            className="h-9 text-xs sm:text-sm justify-start"
-            onClick={() => setPriceRange([1000, 2000])}
-          >
-            ₹1000-₹2000
-          </Button>
-          <Button
-            variant={
-              priceRange[0] === 2000 && priceRange[1] === 5000
-                ? "default"
-                : "outline"
-            }
-            size="sm"
-            className="h-9 text-xs sm:text-sm justify-start"
-            onClick={() => setPriceRange([2000, 5000])}
-          >
-            Above ₹2000
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="container px-4 py-8">
@@ -302,9 +241,9 @@ export default function ProductsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold mb-2">All Products</h1>
-          <p className="text-muted-foreground">
+          {/* <p className="text-muted-foreground">
             Showing {filteredProducts.length} of {products.length} products
-          </p>
+          </p> */}
         </div>
 
         <div className="flex items-center space-x-4 mt-4 md:mt-0">
@@ -377,103 +316,15 @@ export default function ProductsPage() {
         </div>
 
         {/* Products Grid */}
-        <div className="lg:col-span-3">
-          {viewMode === "grid" ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-              {filteredProducts.map((product) => (
-                <Link key={product.id} href={`/product/${product.id}`}>
-                  <Card className="group cursor-pointer hover:shadow-lg transition-shadow pt-0">
-                    <CardContent className="p-0">
-                      <div className="relative aspect-square overflow-hidden rounded-t-lg">
-                        <Image
-                          src={product.image || "/placeholder.svg"}
-                          alt={product.name}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        {product.originalPrice > product.price && (
-                          <Badge className="absolute top-2 left-2 bg-red-500">
-                            {Math.round(
-                              ((product.originalPrice - product.price) /
-                                product.originalPrice) *
-                                100
-                            )}
-                            % OFF
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <h3 className="font-semibold text-sm md:text-base mb-2 line-clamp-2">
-                          {product.name}
-                        </h3>
-                        <div className="flex items-center mb-2">
-                          <div className="flex items-center">
-                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            <span className="text-sm text-muted-foreground ml-1">
-                              {product.rating} ({product.reviews})
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-bold text-lg">
-                            ₹{product.price}
-                          </span>
-                          {product.originalPrice > product.price && (
-                            <span className="text-sm text-muted-foreground line-through">
-                              ₹{product.originalPrice}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className=" flex flex-col gap-2">
-              {filteredProducts.map((product) => (
-                <Link key={product.id} href={`/product/${product.id}`}>
-                  <Card className="group cursor-pointer hover:shadow-lg transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex space-x-4">
-                        <div className="relative w-24 h-24 flex-shrink-0">
-                          <Image
-                            src={product.image || "/placeholder.svg"}
-                            alt={product.name}
-                            fill
-                            className="object-cover rounded-lg"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg mb-2">
-                            {product.name}
-                          </h3>
-                          <div className="flex items-center mb-2">
-                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            <span className="text-sm text-muted-foreground ml-1">
-                              {product.rating} ({product.reviews} reviews)
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="font-bold text-xl">
-                              ₹{product.price}
-                            </span>
-                            {product.originalPrice > product.price && (
-                              <span className="text-sm text-muted-foreground line-through">
-                                ₹{product.originalPrice}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+        <ProductLists
+          viewMode={viewMode}
+          genderIds={selectedGenders}
+          categoryIds={selectedCategories}
+          subcategoryIds={selectedSubCategories}
+          colorIds={selectedColors}
+          priceAbove={priceRange[0]}
+          priceBelow={priceRange[1]}
+        />
       </div>
     </div>
   );

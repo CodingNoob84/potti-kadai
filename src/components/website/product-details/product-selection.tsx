@@ -163,12 +163,12 @@ export const ProductSelection = ({
     addToCartMutation.mutate(newItem);
   };
   useEffect(() => {
-    if (product.inventory && product.inventory?.length > 0) {
+    if (product.inventory?.length > 0) {
       const firstColor = product.inventory[0];
       setSelectedColorId(firstColor.colorId);
       setAvailableSizes(firstColor.sizes);
     }
-  }, [product.inventory]);
+  }, [product.inventory, setSelectedColorId, setAvailableSizes]);
 
   useEffect(() => {
     if (selectedColorId) {
@@ -177,7 +177,7 @@ export const ProductSelection = ({
       );
       if (colorInventory) {
         setAvailableSizes(colorInventory.sizes);
-        setSelectedSizeId(null); // Reset size selection when color changes
+        setSelectedSizeId(null);
       }
     }
   }, [selectedColorId, product]);

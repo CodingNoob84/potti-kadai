@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,8 +9,7 @@ import {
   Truck,
 } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
-import { Button } from "../ui/button";
+import { useEffect, useState } from "react";
 
 const heroSlides = [
   {
@@ -46,23 +46,67 @@ const heroSlides = [
 
 export const HeroSection = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [autoScroll, setAutoScroll] = useState(true);
+  const [pauseTimer, setPauseTimer] = useState(false);
 
-  const nextSlide = () =>
+  // Auto-scroll functionality
+  useEffect(() => {
+    if (!autoScroll || pauseTimer) return;
+
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+    }, 5000); // Change slide every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [autoScroll, pauseTimer]);
+
+  const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-  const prevSlide = () =>
+    resetAutoScroll();
+  };
+
+  const prevSlide = () => {
     setCurrentSlide(
       (prev) => (prev - 1 + heroSlides.length) % heroSlides.length
     );
+    resetAutoScroll();
+  };
+
+  const goToSlide = (index: number) => {
+    setCurrentSlide(index);
+    resetAutoScroll();
+  };
+
+  const resetAutoScroll = () => {
+    // Temporarily pause auto-scroll when user interacts
+    setAutoScroll(false);
+    setTimeout(() => {
+      setAutoScroll(true);
+    }, 10000); // Resume auto-scroll after 10 seconds
+  };
+
+  // Pause on hover
+  const handleMouseEnter = () => {
+    setPauseTimer(true);
+  };
+
+  const handleMouseLeave = () => {
+    setPauseTimer(false);
+  };
 
   return (
-    <section className="relative h-[600px] sm:h-[450px] md:h-[600px] bg-gradient-to-b from-primary/5 to-white">
+    <section
+      className="relative h-[600px] sm:h-[450px] md:h-[600px] bg-gradient-to-b from-primary/5 to-white"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <div className="relative h-full overflow-hidden">
         {heroSlides.map((slide, index) => (
           <div
             key={slide.id}
-            className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${
+            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
               index === currentSlide
-                ? "opacity-100"
+                ? "opacity-100 z-10"
                 : "opacity-0 pointer-events-none"
             }`}
           >
@@ -106,7 +150,7 @@ export const HeroSection = () => {
       </div>
 
       {/* Navigation Arrows - Mobile */}
-      <div className="md:hidden absolute inset-0 flex items-center justify-between px-2 z-20">
+      <div className="md:hidden absolute inset-0 flex items-center justify-between px-2 z-30">
         <button
           onClick={prevSlide}
           className="p-2 rounded-full bg-background/80 text-primary shadow hover:bg-background transition-all"
@@ -124,7 +168,7 @@ export const HeroSection = () => {
       </div>
 
       {/* Navigation Arrows - Desktop */}
-      <div className="hidden md:flex absolute inset-0 items-center justify-between px-4 z-20">
+      <div className="hidden md:flex absolute inset-0 items-center justify-between px-4 z-30">
         <button
           onClick={prevSlide}
           className="p-3 rounded-full bg-background/90 text-primary shadow-lg hover:bg-background transition-all hover:scale-110"
@@ -142,14 +186,14 @@ export const HeroSection = () => {
       </div>
 
       {/* Pagination Dots */}
-      <div className="absolute bottom-4 sm:bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
+      <div className="absolute bottom-4 sm:bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 flex space-x-2 z-20">
         {heroSlides.map((_, index) => (
           <button
             key={index}
             className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
               index === currentSlide ? "bg-primary w-6" : "bg-primary/30 w-3"
             }`}
-            onClick={() => setCurrentSlide(index)}
+            onClick={() => goToSlide(index)}
             aria-label={`Go to slide ${index + 1}`}
           />
         ))}

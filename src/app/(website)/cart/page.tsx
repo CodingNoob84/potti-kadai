@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FreeShippingProgress } from "@/components/website/cart/free-shipping";
 import { useSession } from "@/lib/auth-client";
+import { FREE_SHIPPING_LIMIT, SHIPPING_CHARGES } from "@/lib/contants";
 import {
   CartItemDetail,
   deleteCartItem,
@@ -19,9 +20,6 @@ import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-
-const SHIPPING_CHARGES = 99;
-const FREE_SHIPPING_LIMIT = 2000;
 
 export default function CartPage() {
   const queryClient = useQueryClient();
@@ -122,6 +120,7 @@ export default function CartPage() {
   const shipping = subtotal >= FREE_SHIPPING_LIMIT ? 0 : SHIPPING_CHARGES;
   const total = subtotal + shipping;
   console.log("--shiping", shipping);
+
   const handleQuantity = (
     productId: number,
     pvId: number,

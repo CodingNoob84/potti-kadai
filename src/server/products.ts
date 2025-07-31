@@ -15,7 +15,7 @@ import {
   sizes,
   subcategories,
 } from "@/db/schema/products";
-import { and, avg, eq, inArray, sql } from "drizzle-orm";
+import { and, avg, eq, gte, inArray, lte, sql } from "drizzle-orm";
 
 export async function getSizes() {
   return await db.select().from(sizes);
@@ -23,6 +23,17 @@ export async function getSizes() {
 
 export async function getColors() {
   return await db.select().from(colors);
+}
+
+export async function getColorsUsedInVariants() {
+  return await db
+    .selectDistinct({
+      id: colors.id,
+      name: colors.name,
+      hex: colors.colorCode,
+    })
+    .from(productVariants)
+    .innerJoin(colors, eq(productVariants.colorId, colors.id));
 }
 
 export async function getSizesByOptions(categoryId: number, type: string) {
@@ -791,4 +802,178 @@ export const getProductReviews = async (productId: number) => {
     .orderBy(productReviews.createdAt); // Most recent last (or use `desc()`)
 
   return result;
+};
+
+type ProductFilterParams = {
+  genderIds?: number[];
+  categoryIds?: number[];
+  subcategoryIds?: number[];
+  colorIds?: number[];
+  priceAbove?: number;
+  priceBelow?: number;
+  ratings?: number;
+  pageNumber?: number;
+  limit?: number;
+};
+
+export const getProductFilters = async (filters: ProductFilterParams) => {
+  const {
+    genderIds,
+    categoryIds,
+    subcategoryIds,
+    colorIds,
+    priceAbove,
+    priceBelow,
+    ratings,
+    pageNumber = 1,
+    limit = 12,
+  } = filters;
+
+  const whereClauses = [eq(products.isActive, true)];
+
+  if (genderIds?.length) {
+    whereClauses.push(inArray(productGenders.genderId, genderIds));
+  }
+
+  if (categoryIds?.length) {
+    whereClauses.push(inArray(products.categoryId, categoryIds));
+  }
+
+  if (subcategoryIds?.length) {
+    whereClauses.push(inArray(products.subcategoryId, subcategoryIds));
+  }
+
+  if (priceAbove !== undefined) {
+    whereClauses.push(gte(products.price, priceAbove));
+  }
+
+  if (priceBelow !== undefined) {
+    whereClauses.push(lte(products.price, priceBelow));
+  }
+
+  if (colorIds?.length) {
+    whereClauses.push(inArray(productVariants.colorId, colorIds));
+  }
+
+  // STEP 1: Get all matching product IDs (for total count)
+  const totalCountQuery = await db
+    .select({ id: products.id })
+    .from(products)
+    .leftJoin(productGenders, eq(products.id, productGenders.productId))
+    .leftJoin(productVariants, eq(products.id, productVariants.productId))
+    .where(and(...whereClauses))
+    .groupBy(products.id);
+
+  const totalRecords = totalCountQuery.length;
+
+  // STEP 2: Get paginated base products
+  const offset = (pageNumber - 1) * limit;
+  const baseProducts = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      price: products.price,
+    })
+    .from(products)
+    .leftJoin(productGenders, eq(products.id, productGenders.productId))
+    .leftJoin(productVariants, eq(products.id, productVariants.productId))
+    .where(and(...whereClauses))
+    .groupBy(products.id)
+    .limit(limit)
+    .offset(offset);
+
+  const productIds = baseProducts.map((p) => p.id);
+  if (!productIds.length) return { totalRecords, products: [] };
+
+  // STEP 3: Ratings
+  const reviewStats = await db
+    .select({
+      productId: productReviews.productId,
+      avgRating: sql<number>`ROUND(AVG(${productReviews.rating}), 1)`,
+      reviewCount: sql<number>`COUNT(${productReviews.id})`,
+    })
+    .from(productReviews)
+    .where(inArray(productReviews.productId, productIds))
+    .groupBy(productReviews.productId);
+
+  const ratingMap = new Map<
+    number,
+    { avgRating: number; reviewCount: number }
+  >();
+  reviewStats.forEach((r) =>
+    ratingMap.set(r.productId, {
+      avgRating: Number(r.avgRating),
+      reviewCount: Number(r.reviewCount),
+    })
+  );
+
+  const finalProducts = baseProducts.filter((p) => {
+    if (ratings !== undefined) {
+      const rating = ratingMap.get(p.id)?.avgRating ?? 0;
+      return rating >= ratings;
+    }
+    return true;
+  });
+
+  const finalIds = finalProducts.map((p) => p.id);
+
+  // STEP 4: Images
+  const images = await db
+    .select({
+      productId: productImages.productId,
+      url: productImages.url,
+    })
+    .from(productImages)
+    .where(inArray(productImages.productId, finalIds));
+
+  const imageMap = new Map<number, string>();
+  for (const img of images) {
+    if (!imageMap.has(img.productId)) {
+      imageMap.set(img.productId, img.url);
+    }
+  }
+
+  // STEP 5: Discounts
+  const discountsData = await db
+    .select({
+      productId: discounts.productId,
+      type: discounts.type,
+      value: discounts.value,
+      minQuantity: discounts.minQuantity,
+    })
+    .from(discounts)
+    .where(inArray(discounts.productId, productIds));
+
+  type Discount = {
+    type: string;
+    value: number;
+    minQuantity: number | null;
+  };
+
+  const discountMap = new Map<number, Discount[]>();
+  for (const d of discountsData) {
+    const list = discountMap.get(d.productId!) ?? [];
+    list.push({
+      type: d.type,
+      value: d.value,
+      minQuantity: d.minQuantity,
+    });
+    discountMap.set(d.productId!, list);
+  }
+
+  // STEP 6: Final return
+  const result = finalProducts.map((p) => ({
+    id: p.id,
+    name: p.name,
+    price: p.price,
+    avgRating: ratingMap.get(p.id)?.avgRating ?? 0,
+    reviewCount: ratingMap.get(p.id)?.reviewCount ?? 0,
+    imageUrl: imageMap.get(p.id) ?? null,
+    discounts: discountMap.get(p.id) ?? [],
+  }));
+
+  return {
+    totalRecords,
+    products: result,
+  };
 };

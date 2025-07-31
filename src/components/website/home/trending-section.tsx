@@ -5,10 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import { Card, CardContent } from "../ui/card";
-import { Skeleton } from "../ui/skeleton";
+import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
+import { Card, CardContent } from "../../ui/card";
+import { Skeleton } from "../../ui/skeleton";
 
 const getReviewRating = () => {
   const rating = (Math.random() * 1.5 + 3.5).toFixed(1);
@@ -57,8 +57,6 @@ export const TrendingSection = () => {
     switch (discount.type) {
       case "direct":
         return `${discount.value}% OFF`;
-      case "fixed":
-        return `₹${discount.value} OFF`;
       case "quantity":
         return `Buy ${discount.minQuantity}+ for ${discount.value}% OFF`;
       default:

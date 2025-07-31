@@ -3,6 +3,7 @@ import { db } from "@/db/drizzle";
 import {
   categories,
   categorySubcategories,
+  genders,
   sizes,
   subcategories,
 } from "@/db/schema/products";
@@ -282,4 +283,8 @@ export async function updateSize(input: UpdateSizeInput) {
       type: input.type,
     })
     .where(eq(sizes.id, input.id));
+}
+
+export async function getAllGenderList() {
+  return await db.select().from(genders);
 }
