@@ -27,7 +27,7 @@ export const productCreateSchema = z.object({
   ),
   category: z.number(),
   subcategory: z.number(),
-  type: z.string(),
+  //type: z.string(),
   tags: z.array(z.string()),
   images: z.array(z.string()),
   inventory: z.array(

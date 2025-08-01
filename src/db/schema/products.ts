@@ -75,7 +75,7 @@ export const categorySubcategoriesRelations = relations(
   })
 );
 
-export const sizes = pgTable("availablesizes", {
+export const sizes = pgTable("sizes", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   sizenumber: integer("sizenumber"), // in cm
@@ -83,9 +83,41 @@ export const sizes = pgTable("availablesizes", {
   usSize: text("us_size"),
   euSize: text("eu_size"),
   ukSize: text("uk_size"),
-  type: text("type"), // upper or lower
-  categoryId: integer("category_id").references(() => categories.id),
+  typeId: integer("type_id").references(() => sizeTypes.id), // Reference to size type
 });
+
+export const sizeTypes = pgTable("sizeTypes", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+});
+
+export const subcategorySizes = pgTable("subcategory_sizes", {
+  id: serial("id").primaryKey(),
+  subcategoryId: integer("subcategory_id")
+    .notNull()
+    .references(() => subcategories.id, { onDelete: "cascade" }),
+  sizeId: integer("size_id")
+    .notNull()
+    .references(() => sizes.id, { onDelete: "cascade" }),
+  // You can add additional fields specific to this relationship if needed
+  // For example, whether this size is commonly used for this subcategory
+  isCommon: boolean("is_common").default(false),
+});
+
+export const subcategorySizesRelations = relations(
+  subcategorySizes,
+  ({ one }) => ({
+    subcategory: one(subcategories, {
+      fields: [subcategorySizes.subcategoryId],
+      references: [subcategories.id],
+    }),
+    size: one(sizes, {
+      fields: [subcategorySizes.sizeId],
+      references: [sizes.id],
+    }),
+  })
+);
 
 export const colors = pgTable("availablecolors", {
   id: serial("id").primaryKey(),

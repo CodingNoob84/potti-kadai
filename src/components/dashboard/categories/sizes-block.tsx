@@ -29,7 +29,7 @@ export const SizesBlock = () => {
 
   const groupSizesByCategoryType = (data: Size[] = []) => {
     return data.reduce((acc, size) => {
-      const groupKey = `${size.categoryName} - ${size.type}`;
+      const groupKey = `${size.name}`;
       if (!acc[groupKey]) {
         acc[groupKey] = [];
       }
@@ -50,7 +50,7 @@ export const SizesBlock = () => {
         <div key={groupKey}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">{groupKey}</h2>
-            <AddEditSize type="Add" sizeType={sizes[0].type} />
+            <AddEditSize type="Add" sizeType={"upper"} />
           </div>
 
           <Card>
@@ -90,7 +90,7 @@ export const SizesBlock = () => {
                             <div className="flex justify-end space-x-2">
                               <AddEditSize
                                 type="Edit"
-                                sizeType={size.type}
+                                sizeType={""}
                                 initialSize={size}
                               />
                               <Button

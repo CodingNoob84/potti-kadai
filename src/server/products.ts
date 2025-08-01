@@ -36,12 +36,12 @@ export async function getColorsUsedInVariants() {
     .innerJoin(colors, eq(productVariants.colorId, colors.id));
 }
 
-export async function getSizesByOptions(categoryId: number, type: string) {
-  console.log("-->db", categoryId, type);
+export async function getSizesByOptions(categoryId: number) {
+  console.log("-->db", categoryId);
   const result = await db
     .select()
     .from(sizes)
-    .where(and(eq(sizes.categoryId, categoryId), eq(sizes.type, type)))
+    //.where(and(eq(sizes.categoryId, categoryId), eq(sizes.type, type)))
     .orderBy(sizes.sizenumber);
 
   return result;
@@ -616,7 +616,7 @@ type EditProductDetail = {
   subcategory: number;
   images: string[];
   gender: string[];
-  type: string;
+  //type: string;
   discounts: {
     type: string;
     value: number;
@@ -713,7 +713,7 @@ export const getProductDetailsByIdEdit = async (
       colorCode: colors.colorCode,
       sizeId: sizes.id,
       sizeName: sizes.name,
-      type: sizes.type,
+      //type: sizes.type,
       quantity: productVariants.quantity,
     })
     .from(productVariants)
@@ -722,7 +722,7 @@ export const getProductDetailsByIdEdit = async (
     .where(eq(productVariants.productId, productId))
     .orderBy(sizes.id);
 
-  const type = variants[0].type;
+  //const type = variants[0].type;
   const colorMap = new Map<number, EditProductDetail["inventory"][0]>();
 
   for (const v of variants) {
@@ -755,7 +755,7 @@ export const getProductDetailsByIdEdit = async (
     discounts: discount,
     promocodes: promocode,
     inventory: Array.from(colorMap.values()),
-    type: type ?? "",
+    // type: type ?? "",
   };
 
   return productDetail;

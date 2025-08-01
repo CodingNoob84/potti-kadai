@@ -229,12 +229,12 @@ export const getAllSizesWithCategory = async () => {
       usSize: sizes.usSize,
       euSize: sizes.euSize,
       ukSize: sizes.ukSize,
-      type: sizes.type,
-      categoryId: sizes.categoryId,
-      categoryName: categories.name,
+      //type: sizes.type,
+      //categoryId: sizes.categoryId,
+      //categoryName: categories.name,
     })
-    .from(sizes)
-    .innerJoin(categories, eq(sizes.categoryId, categories.id));
+    .from(sizes);
+  //.innerJoin(categories, eq(sizes.categoryId, categories.id));
 };
 
 type NewSizeInput = {
@@ -254,8 +254,8 @@ export async function addSize(input: NewSizeInput) {
     usSize: input.usSize ?? null,
     euSize: input.euSize ?? null,
     indiaSize: input.indiaSize ?? null,
-    categoryId: input.categoryId,
-    type: input.type,
+    //categoryId: input.categoryId,
+    //type: input.type,
   });
 }
 
@@ -266,8 +266,8 @@ type UpdateSizeInput = {
   usSize?: string;
   euSize?: string;
   indiaSize?: string;
-  categoryId: number;
-  type: string;
+  //categoryId: number;
+  // type: string;
 };
 
 export async function updateSize(input: UpdateSizeInput) {
@@ -279,8 +279,8 @@ export async function updateSize(input: UpdateSizeInput) {
       usSize: input.usSize ?? null,
       euSize: input.euSize ?? null,
       indiaSize: input.indiaSize ?? null,
-      categoryId: input.categoryId,
-      type: input.type,
+      //categoryId: input.categoryId,
+      //type: input.type,
     })
     .where(eq(sizes.id, input.id));
 }

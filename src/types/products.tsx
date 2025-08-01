@@ -6,8 +6,7 @@ export type DefaultsizeTypes = {
   usSize: string | null;
   euSize: string | null;
   ukSize: string | null;
-  type: string | null;
-  categoryId: number | null;
+  typeId: number | null;
 };
 
 export type colorsTypes = {

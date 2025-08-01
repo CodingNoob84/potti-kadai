@@ -149,7 +149,7 @@ export const AddCategoriesBlock = ({ form }: AddCategoriesBlockProps) => {
         </div>
 
         {/* Type Select for clothing-related categories */}
-        {selectedCategory?.name.toLowerCase().includes("clothing") && (
+        {/* {selectedCategory?.name.toLowerCase().includes("clothing") && (
           <FormField
             control={control}
             name="type"
@@ -172,7 +172,7 @@ export const AddCategoriesBlock = ({ form }: AddCategoriesBlockProps) => {
               </FormItem>
             )}
           />
-        )}
+        )} */}
 
         {/* Tags Section */}
         {/* <FormField

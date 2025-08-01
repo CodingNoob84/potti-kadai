@@ -56,7 +56,7 @@ export const AddEditSize = ({
       usSize: "",
       euSize: "",
       indiaSize: "",
-      categoryId: initialSize?.categoryId ?? 1, // fallback to 1 if undefined
+      //categoryId: initialSize?.categoryId ?? 1, // fallback to 1 if undefined
     },
   });
 
@@ -68,7 +68,7 @@ export const AddEditSize = ({
         usSize: initialSize.usSize || "",
         euSize: initialSize.euSize || "",
         indiaSize: initialSize.indiaSize || "",
-        categoryId: initialSize.categoryId ?? 1,
+        //categoryId: initialSize.categoryId ?? 1,
       });
     } else {
       form.reset({
@@ -97,7 +97,7 @@ export const AddEditSize = ({
 
   const updateSizeMutation = useMutation({
     mutationFn: (data: z.infer<typeof sizeSchema>) =>
-      updateSize({ id: initialSize?.id ?? 0, ...data, type: sizeType ?? "" }),
+      updateSize({ id: initialSize?.id ?? 0, ...data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["all-sizes"] });
       toast.success("Size updated successfully");

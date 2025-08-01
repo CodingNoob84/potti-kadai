@@ -85,12 +85,12 @@ export const ImagesBlock = ({ form, maxImages = 8 }: ImagesBlockProps) => {
   };
 
   return (
-    <Card className="col-span-2">
+    <Card className="col-span-1">
       <CardHeader>
         <CardTitle>Product Images</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-4">
           {/* Existing Images */}
           {images.map((url, index) => (
             <div key={url} className="relative aspect-square group">

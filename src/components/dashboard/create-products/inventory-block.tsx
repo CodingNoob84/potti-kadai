@@ -49,22 +49,22 @@ export const InventoryManagement = ({
   const { watch, setValue } = form;
 
   const categoryId = watch("category");
-  const type = watch("type");
-  const inventory = useMemo(() => watch("inventory") || [], [watch]);
+  //const type = watch("type");
+  const inventory: InventoryType[] = watch("inventory") || [];
 
   const {
     data: sizesdata = [],
     isLoading: isLoadingSizes,
     isFetching: isFetchingSizes,
   } = useQuery({
-    queryKey: ["sizes", categoryId, type],
+    queryKey: ["sizes", categoryId],
     queryFn: ({ queryKey }) => {
       const [, categoryId, type] = queryKey;
       if (!categoryId || !type) return [];
-      return getSizesByOptions(Number(categoryId), type.toString());
+      return getSizesByOptions(Number(categoryId));
     },
-    enabled: !!categoryId && !!type,
-    staleTime: Infinity, // Prevent unnecessary refetches
+    enabled: !!categoryId,
+    staleTime: Infinity,
   });
 
   const { data: colorsdata = [], isLoading: isLoadingColors } = useQuery({
@@ -124,24 +124,21 @@ export const InventoryManagement = ({
 
   const updateQuantity = useCallback(
     (colorId: number, sizeId: number, quantity: number) => {
-      setValue(
-        "inventory",
-        inventory.map((i: InventoryType) =>
-          i.colorId === colorId
-            ? {
-                ...i,
-                sizes: i.sizes.map((s: sizeType) =>
-                  s.sizeId === sizeId ? { ...s, quantity } : s
-                ),
-              }
-            : i
-        ),
-        { shouldValidate: true }
+      const updatedInventory = inventory.map((i: InventoryType) =>
+        i.colorId === colorId
+          ? {
+              ...i,
+              sizes: i.sizes.map((s: sizeType) =>
+                s.sizeId === sizeId ? { ...s, quantity } : s
+              ),
+            }
+          : i
       );
+      setValue("inventory", updatedInventory, { shouldValidate: true });
     },
     [inventory, setValue]
   );
-  console.log("inventory", inventory);
+
   const isLoading = isLoadingSizes || isFetchingSizes || isLoadingColors;
 
   return (
@@ -281,7 +278,7 @@ export const InventoryManagement = ({
                 ))
               ) : (
                 <div className="flex items-center justify-center h-32 text-muted-foreground">
-                  {categoryId && type
+                  {categoryId
                     ? "Select a color to add inventory"
                     : "Select a category and type first"}
                 </div>

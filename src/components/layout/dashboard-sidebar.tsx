@@ -66,6 +66,22 @@ const menuItems: MenuItem[] = [
     ],
   },
   {
+    title: "Offers",
+    icon: <ShoppingCart className="h-4 w-4" />,
+    submenu: [
+      {
+        title: "Discounts",
+        href: "/dashboard/discounts",
+        icon: <List className="h-4 w-4" />,
+      },
+      {
+        title: "Promocodes",
+        href: "/dashboard/promocodes",
+        icon: <BarChart3 className="h-4 w-4" />,
+      },
+    ],
+  },
+  {
     title: "Orders",
     icon: <ShoppingCart className="h-4 w-4" />,
     submenu: [

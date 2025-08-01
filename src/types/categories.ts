@@ -30,9 +30,9 @@ export interface Size {
   usSize: string | null;
   euSize: string | null;
   ukSize: string | null;
-  type: string | null;
-  categoryId: number | null;
-  categoryName: string;
+  // type: string | null;
+  // categoryId: number | null;
+  // categoryName: string;
 }
 
 export interface AddSizeInput {

@@ -3,8 +3,6 @@ import { Form } from "@/components/ui/form";
 import { productCreateType } from "@/form-schemas/product";
 import { UseFormReturn } from "react-hook-form";
 import { ProductBasicInfo } from "./basic-info";
-import { AddCategoriesBlock } from "./categories";
-import { DiscountBlock } from "./discount-block";
 import { ImagesBlock } from "./images-block";
 import { InventoryManagement } from "./inventory-block";
 
@@ -18,15 +16,13 @@ export const ProductForm = ({ type, form, onSubmit }: ProductFormTypes) => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ProductBasicInfo form={form} />
-          <DiscountBlock form={form} />
+          {/* <AddCategoriesBlock form={form} /> */}
+          <ImagesBlock form={form} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <ImagesBlock form={form} />
-          <AddCategoriesBlock form={form} />
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"></div>
 
         <InventoryManagement form={form} />
 

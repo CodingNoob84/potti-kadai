@@ -18,7 +18,7 @@ const initialValues: productCreateType = {
   promocodes: [],
   category: 0,
   subcategory: 0,
-  type: "",
+  //type: "",
   tags: [],
   images: [],
   inventory: [],

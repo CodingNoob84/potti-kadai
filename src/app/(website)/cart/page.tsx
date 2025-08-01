@@ -46,7 +46,7 @@ export default function CartPage() {
         ["cartitems", user?.id],
         (old: CartItemDetail[] = []) =>
           old.map((item: CartItemDetail) =>
-            item.pvId === productVariantId ? { ...item, newQuantity } : item
+            item.pvId === productVariantId ? { ...item, quantity: newQuantity } : item
           )
       );
       return { previousItems };
