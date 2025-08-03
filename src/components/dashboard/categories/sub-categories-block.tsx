@@ -1,19 +1,32 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getSubCategoriesWithCategory } from "@/server/categories";
-import { FromSubCategoryType } from "@/types/categories";
+import { getSubCategoriesWithOptions } from "@/server/categories";
+
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AddEditSubCategory } from "./add-edit-subcategories";
 
+type FromSubCategoryType = {
+  id: number;
+  name: string;
+  is_active: boolean;
+  size_type_id: number;
+  size_type_name: string;
+  categories: {
+    id: number;
+    name: string;
+    is_active: boolean;
+  }[];
+};
+
 export const SubCategoriesBlock = () => {
   //const queryClient = useQueryClient();
   const { data: AllSubCategories, isLoading } = useQuery({
     queryKey: ["all-subcategories"],
-    queryFn: getSubCategoriesWithCategory,
+    queryFn: getSubCategoriesWithOptions,
   });
   console.log("data", AllSubCategories);
 
@@ -168,10 +181,9 @@ export const SubCategoriesBlock = () => {
                                     {category.name}
                                   </span>
                                 ))}
-                                {(!subcat.categories ||
-                                  subcat.categories.length === 0) && (
-                                  <span className="text-xs text-muted-foreground italic">
-                                    No categories assigned
+                                {subcat.size_type_id != 0 && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                                    {subcat.size_type_name}
                                   </span>
                                 )}
                               </div>
@@ -179,12 +191,12 @@ export const SubCategoriesBlock = () => {
                               <div className="flex items-center gap-2 text-sm">
                                 <span
                                   className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                    subcat.isActive
+                                    subcat.is_active
                                       ? "bg-green-100 text-green-800"
                                       : "bg-red-100 text-red-800"
                                   }`}
                                 >
-                                  {subcat.isActive ? "Active" : "Inactive"}
+                                  {subcat.is_active ? "Active" : "Inactive"}
                                 </span>
                               </div>
                             </div>

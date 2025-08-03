@@ -1,81 +1,157 @@
 "use server";
+
 import { db } from "@/db/drizzle";
-import {
-  categories,
-  categorySubcategories,
-  genders,
-  sizes,
-  subcategories,
-} from "@/db/schema/products";
-import {
-  CategoryType,
-  FromCategoryType,
-  FromSubCategoryType,
-} from "@/types/categories";
-import { and, eq } from "drizzle-orm";
+import { categories, categorySubcategories, countrySizes, genders, sizes, sizeTypes, subcategories } from "@/db/schema/category";
+import { FromCategoryType } from "@/types/categories";
+import { and, asc, eq, ilike } from "drizzle-orm";
 
-export const getAllCategories = async () => {
-  const data = await db.query.categories.findMany({
-    with: {
-      categorySubcategories: {
-        with: {
-          subcategory: true,
-        },
-      },
-    },
-    orderBy: (fields, { asc }) => [asc(fields.name)],
-  });
+export async function getAllCategoriesWithSubcategories() {
+  const categorySubcatData = await db
+    .select({
+      categoryId: categories.id,
+      categoryName: categories.name,
+      categorySlug: categories.slug,
+      categoryDesc: categories.description,
+      categoryIsActive:categories.is_active,
+      subcategoryId: subcategories.id,
+      subcategoryName: subcategories.name,
+      subcatIsActive:subcategories.is_active
+    })
+    .from(categories)
+    .leftJoin(categorySubcategories, eq(categories.id, categorySubcategories.category_id))
+    .leftJoin(subcategories, eq(categorySubcategories.subcategory_id, subcategories.id));
 
-  return data.map((category) => ({
-    id: category.id,
-    name: category.name,
-    slug: category.slug,
-    description: category.description || "",
-    isActive: category.isActive,
-    subcategories: category.categorySubcategories.map((cs) => cs.subcategory),
-  }));
+  // Group by category
+  const result = Object.values(
+    categorySubcatData.reduce((acc, row) => {
+      const catId = row.categoryId;
+      if (!acc[catId]) {
+        acc[catId] = {
+          id: row.categoryId,
+          name: row.categoryName,
+          slug: row.categorySlug,
+          description: row.categoryDesc,
+          is_active:row.categoryIsActive,
+          subcategories: [],
+        };
+      }
+
+      if (row.subcategoryId) {
+        acc[catId].subcategories.push({
+          id: row.subcategoryId,
+          name: row.subcategoryName ?? '',
+          is_active:row.subcatIsActive ?? false
+        });
+      }
+
+      return acc;
+    }, {} as Record<number, {
+      id: number;
+      name: string;
+      slug: string;
+      description: string;
+      is_active:boolean;
+      subcategories: { id: number; name: string, is_active:boolean }[];
+    }>)
+  );
+
+  return result;
+}
+
+type CategoryType={
+  id: number;
+    name: string;
+    slug: string;
+    description: string;
+    is_active: boolean;
+    created_at: Date | null;
+    updated_at: Date | null;
+}
+
+export const getAllCategorieList = async (): Promise<CategoryType[]> => {
+  const result = await db
+    .select()
+    .from(categories)
+    .where(eq(categories.is_active, true))
+    .orderBy(asc(categories.name));
+
+  return result;
 };
 
-export const createUpdateCategory = async (input: FromCategoryType) => {
+
+
+
+
+export const getAllSubCategorieList = async () => {
+  const result = await db
+    .select()
+    .from(subcategories)
+    .where(eq(subcategories.is_active, true))
+    .orderBy(asc(subcategories.name));
+
+  return result;
+};
+
+export const getAllSubCategorieListSearch = async (searchTerm?: string) => {
+  const conditions = [eq(subcategories.is_active, true)];
+
+  if (searchTerm) {
+    conditions.push(ilike(subcategories.name, `%${searchTerm}%`));
+  }
+
+  const result = await db
+    .select()
+    .from(subcategories)
+    .where(and(...conditions))
+    .orderBy(asc(subcategories.name));
+
+  return result;
+};
+
+
+export const createOrUpdateCategory = async (input: FromCategoryType) => {
   let categoryId = input.id;
 
-  if (input.id) {
-    // UPDATE category
+  if (categoryId) {
+    // 🟡 UPDATE category
     await db
       .update(categories)
       .set({
         name: input.name,
         slug: input.slug,
         description: input.description ?? "",
-        isActive: input.isActive ?? true,
+        is_active: input.is_active ?? true,
+        updated_at: new Date(),
       })
-      .where(eq(categories.id, input.id));
+      .where(eq(categories.id, categoryId));
 
-    // DELETE existing subcategory links
+    // 🧹 Clean up old links
     await db
       .delete(categorySubcategories)
-      .where(eq(categorySubcategories.categoryId, input.id));
+      .where(eq(categorySubcategories.category_id, categoryId));
   } else {
-    // INSERT new category
-    const result = await db
+    // 🟢 INSERT new category
+    const inserted = await db
       .insert(categories)
       .values({
         name: input.name,
         slug: input.slug,
         description: input.description ?? "",
-        isActive: input.isActive ?? true,
+        is_active: input.is_active ?? true,
+        created_at: new Date(),
+        updated_at: new Date(),
       })
       .returning({ id: categories.id });
 
-    categoryId = result[0]?.id;
+    categoryId = inserted[0]?.id;
   }
 
-  // INSERT new subcategory links
-  if (input.subcategories.length && categoryId) {
+  // 🔗 Re-link subcategories
+  if (input.subcategories?.length && categoryId) {
     await db.insert(categorySubcategories).values(
       input.subcategories.map((sub) => ({
-        categoryId,
-        subcategoryId: sub.id,
+        category_id: categoryId!,
+        subcategory_id: sub.id,
       }))
     );
   }
@@ -84,16 +160,17 @@ export const createUpdateCategory = async (input: FromCategoryType) => {
 };
 
 export const deleteCategory = async (categoryId: number) => {
-  // Delete subcategory links first
+  // Clean up subcategory relations
   await db
     .delete(categorySubcategories)
-    .where(eq(categorySubcategories.categoryId, categoryId));
+    .where(eq(categorySubcategories.category_id, categoryId));
 
-  // Then delete the category itself
+  // Delete the category
   await db.delete(categories).where(eq(categories.id, categoryId));
 
   return { result: "Category deleted", categoryId };
 };
+
 
 export const removeSubcategoryFromCategory = async (
   categoryId: number,
@@ -103,188 +180,329 @@ export const removeSubcategoryFromCategory = async (
     .delete(categorySubcategories)
     .where(
       and(
-        eq(categorySubcategories.categoryId, categoryId),
-        eq(categorySubcategories.subcategoryId, subcategoryId)
+        eq(categorySubcategories.category_id, categoryId),
+        eq(categorySubcategories.subcategory_id, subcategoryId)
       )
     );
 
-  return { result: "Subcategory removed", categoryId, subcategoryId };
+  return {
+    result: "Subcategory removed from category",
+    categoryId,
+    subcategoryId,
+  };
 };
 
-export const getAllCategorieList = async (): Promise<CategoryType[]> => {
-  const result = await db.query.categories.findMany({
-    where: (fields, { eq }) => eq(fields.isActive, true),
-    orderBy: (fields, { asc }) => [asc(fields.name)],
-  });
 
-  return result as CategoryType[];
-};
-
-export const getAllSubCategorieList = async () => {
-  return await db.query.subcategories.findMany({
-    where: (fields, { eq }) => eq(fields.isActive, true),
-    orderBy: (fields, { asc }) => [asc(fields.name)],
-  });
-};
 
 export const getSubCategoriesWithCategory = async () => {
-  const data = await db.query.subcategories.findMany({
-    with: {
-      categorySubcategories: {
-        with: {
-          category: true,
-        },
-      },
-    },
-    orderBy: (fields, { asc }) => [asc(fields.name)],
-  });
+  const rows = await db
+    .select({
+      subcategoryId: subcategories.id,
+      subcategoryName: subcategories.name,
+      subcategoryIsActive: subcategories.is_active,
+      categoryId: categories.id,
+      categoryName: categories.name,
+      categoryIsActive: categories.is_active
+    })
+    .from(subcategories)
+    .leftJoin(categorySubcategories, eq(subcategories.id, categorySubcategories.subcategory_id))
+    .leftJoin(categories, eq(categorySubcategories.category_id, categories.id));
 
-  // Flatten and map subcategory with its parent category info
-  return data.map((sub) => ({
-    id: sub.id,
-    name: sub.name,
-    isActive: sub.isActive,
-    categories: sub.categorySubcategories.map((cs) => ({
-      id: cs.category.id,
-      name: cs.category.name,
-      slug: cs.category.slug,
-      isActive: cs.category.isActive,
-      description: cs.category.description,
-    })),
-  }));
+  // Group by subcategory
+  const grouped = Object.values(
+    rows.reduce((acc, row) => {
+      const sid = row.subcategoryId;
+      if (!acc[sid]) {
+        acc[sid] = {
+          id: sid,
+          name: row.subcategoryName,
+          is_active:row.subcategoryIsActive ?? false,
+          categories: [],
+        };
+      }
+      if (row.categoryId) {
+        acc[sid].categories.push({
+          id: row.categoryId,
+          name: row.categoryName ?? '',
+          is_active:row.categoryIsActive ?? false
+        });
+      }
+      return acc;
+    }, {} as Record<number, { id: number; name: string; is_active:boolean; categories: { id: number; name: string; is_active:boolean; }[] }>)
+  );
+
+  return grouped;
 };
 
-export const createUpdateSubCategory = async (input: FromSubCategoryType) => {
-  const isActive = input.isActive ?? true;
+export const getSubCategoriesWithOptions = async () => {
+  const rows = await db
+    .select({
+      subcategoryId: subcategories.id,
+      subcategoryName: subcategories.name,
+      subcategoryIsActive: subcategories.is_active,
+      categoryId: categories.id,
+      categoryName: categories.name,
+      categoryIsActive: categories.is_active,
+      sizeTypeId: sizeTypes.id,
+      sizeTypeName: sizeTypes.name,
+    })
+    .from(subcategories)
+    .leftJoin(categorySubcategories, eq(subcategories.id, categorySubcategories.subcategory_id))
+    .leftJoin(categories, eq(categorySubcategories.category_id, categories.id))
+    .leftJoin(sizeTypes, eq(subcategories.size_type_id, sizeTypes.id));
 
-  if (input.id) {
-    // Update subcategory
+  const grouped = Object.values(
+    rows.reduce((acc, row) => {
+      const sid = row.subcategoryId;
+      if (!acc[sid]) {
+        acc[sid] = {
+          id: sid,
+          name: row.subcategoryName,
+          is_active: row.subcategoryIsActive ?? false,
+          size_type_id: row.sizeTypeId ?? 0,
+          size_type_name: row.sizeTypeName ?? '',
+          categories: [],
+        };
+      }
+
+      if (row.categoryId) {
+        acc[sid].categories.push({
+          id: row.categoryId,
+          name: row.categoryName ?? '',
+          is_active: row.categoryIsActive ?? false,
+        });
+      }
+
+      
+
+      return acc;
+    }, {} as Record<
+      number,
+      {
+        id: number;
+        name: string;
+        is_active: boolean;
+        size_type_id: number;
+        size_type_name: string;
+        categories: { id: number; name: string; is_active: boolean }[];
+      }
+    >)
+  );
+
+  return grouped;
+};
+
+
+export const getSubCategoriesByCategoryId = async (categoryId: number) => {
+  const rows = await db
+    .select({
+      id: subcategories.id,
+      name: subcategories.name,
+    })
+    .from(subcategories)
+    .innerJoin(categorySubcategories, eq(subcategories.id, categorySubcategories.subcategory_id))
+    .where(eq(categorySubcategories.category_id, categoryId));
+
+  return rows;
+};
+
+
+
+type SubcategoryInput = {
+  id?: number;
+  name: string;
+  is_active?: boolean;
+  size_type_id:number;
+  categories?: { id: number }[];
+};
+
+export const createOrUpdateSubCategory = async (input: SubcategoryInput) => {
+  let subcategoryId = input.id;
+
+  if (subcategoryId) {
+    // 🟡 Update
     await db
       .update(subcategories)
       .set({
         name: input.name,
-        isActive,
+        is_active: input.is_active ?? true,
+        size_type_id: input.size_type_id,
+        updated_at: new Date(),
       })
-      .where(eq(subcategories.id, input.id));
+      .where(eq(subcategories.id, subcategoryId));
 
-    // Clear existing category relations
+    // 🧹 Remove old links
     await db
       .delete(categorySubcategories)
-      .where(eq(categorySubcategories.subcategoryId, input.id));
-
-    // Re-insert category relations
-    if (input.categories && input.categories.length > 0) {
-      const categoryLinks = input.categories.map((cat) => ({
-        categoryId: cat.id,
-        subcategoryId: input.id!,
-      }));
-      await db.insert(categorySubcategories).values(categoryLinks);
-    }
-
-    return { result: "updated", subcategoryId: input.id };
+      .where(eq(categorySubcategories.subcategory_id, subcategoryId));
   } else {
-    // Insert new subcategory
+    // 🟢 Insert
     const inserted = await db
       .insert(subcategories)
       .values({
         name: input.name,
-        isActive,
+        is_active: input.is_active ?? true,
+        size_type_id: input.size_type_id,
+        created_at: new Date(),
+        updated_at: new Date(),
       })
       .returning({ id: subcategories.id });
 
-    const newId = inserted[0]?.id;
-
-    // Insert category relations
-    if (input.categories && input.categories.length > 0 && newId) {
-      const categoryLinks = input.categories.map((cat) => ({
-        categoryId: cat.id,
-        subcategoryId: newId,
-      }));
-      await db.insert(categorySubcategories).values(categoryLinks);
-    }
-
-    return { result: "created", subcategoryId: newId };
+    subcategoryId = inserted[0]?.id;
   }
+
+  // 🔗 Re-link to categories
+  if (input.categories?.length && subcategoryId) {
+    await db.insert(categorySubcategories).values(
+      input.categories.map((cat) => ({
+        subcategory_id: subcategoryId!,
+        category_id: cat.id,
+      }))
+    );
+  }
+
+  return { result: "Success", subcategoryId };
 };
+
 
 export const deleteSubCategory = async (subcategoryId: number) => {
-  // Delete all category relations first
+  // Remove links from category_subcategories
   await db
     .delete(categorySubcategories)
-    .where(eq(categorySubcategories.subcategoryId, subcategoryId));
+    .where(eq(categorySubcategories.subcategory_id, subcategoryId));
 
-  // Delete the subcategory
+  // Delete subcategory
   await db.delete(subcategories).where(eq(subcategories.id, subcategoryId));
 
-  return { result: "deleted", subcategoryId };
+  return { result: "Subcategory deleted", subcategoryId };
 };
 
-export const getAllSizesWithCategory = async () => {
-  return await db
+
+
+export const getAllSizes = async () => {
+  // Step 1: Fetch all sizes with their type
+  const sizeData = await db
     .select({
       id: sizes.id,
       name: sizes.name,
-      sizenumber: sizes.sizenumber,
-      indiaSize: sizes.indiaSize,
-      usSize: sizes.usSize,
-      euSize: sizes.euSize,
-      ukSize: sizes.ukSize,
-      //type: sizes.type,
-      //categoryId: sizes.categoryId,
-      //categoryName: categories.name,
+      sizeNumber: sizes.size_number,
+      sizeTypeId: sizes.size_type_id,
+      sizeTypeName: sizeTypes.name,
     })
-    .from(sizes);
-  //.innerJoin(categories, eq(sizes.categoryId, categories.id));
-};
+    .from(sizes)
+    .leftJoin(sizeTypes, eq(sizes.size_type_id, sizeTypes.id));
 
-type NewSizeInput = {
-  name: string;
-  ukSize?: string;
-  usSize?: string;
-  euSize?: string;
-  indiaSize?: string;
-  categoryId: number;
-  type: string;
-};
+  // Step 2: Fetch all country sizes in one query
+  const allCountrySizes = await db
+    .select({
+      id: countrySizes.id,
+      sizeId: countrySizes.size_id,
+      countryName: countrySizes.country_name,
+      sizeLabel: countrySizes.size_label,
+    })
+    .from(countrySizes);
 
-export async function addSize(input: NewSizeInput) {
-  await db.insert(sizes).values({
-    name: input.name,
-    ukSize: input.ukSize ?? null,
-    usSize: input.usSize ?? null,
-    euSize: input.euSize ?? null,
-    indiaSize: input.indiaSize ?? null,
-    //categoryId: input.categoryId,
-    //type: input.type,
+  // Step 3: Combine country sizes into each size
+  const result = sizeData.map((size) => {
+    const countries = allCountrySizes
+      .filter((cs) => cs.sizeId === size.id)
+      .map((cs) => ({
+        id: cs.id,
+        country_name: cs.countryName,
+        size_label: cs.sizeLabel,
+      }));
+
+    return {
+      id: size.id,
+      name: size.name,
+      size_number: size.sizeNumber,
+      size_type: {
+        id: size.sizeTypeId,
+        name: size.sizeTypeName,
+      },
+      country_sizes: countries,
+    };
   });
-}
 
-type UpdateSizeInput = {
-  id: number;
-  name: string;
-  ukSize?: string;
-  usSize?: string;
-  euSize?: string;
-  indiaSize?: string;
-  //categoryId: number;
-  // type: string;
+  return result;
 };
 
-export async function updateSize(input: UpdateSizeInput) {
-  await db
-    .update(sizes)
-    .set({
-      name: input.name,
-      ukSize: input.ukSize ?? null,
-      usSize: input.usSize ?? null,
-      euSize: input.euSize ?? null,
-      indiaSize: input.indiaSize ?? null,
-      //categoryId: input.categoryId,
-      //type: input.type,
-    })
-    .where(eq(sizes.id, input.id));
+type SizeInput = {
+  id?: number;
+  name: string;
+  sizeNumber?: number;
+  sizeTypeId?: number;
+  countrySizes?: {
+    id?: number; // optional, only for updates
+    countryName: string;
+    sizeLabel: string;
+  }[];
+};
+
+
+
+export const createOrUpdateSize = async (input: SizeInput) => {
+  let sizeId = input.id;
+
+  if (sizeId) {
+    // 🟡 Update size
+    await db
+      .update(sizes)
+      .set({
+        name: input.name,
+        size_number: input.sizeNumber ?? null,
+        size_type_id: input.sizeTypeId ?? null,
+      })
+      .where(eq(sizes.id, sizeId));
+
+    // 🧹 Delete existing country size links
+    await db
+      .delete(countrySizes)
+      .where(eq(countrySizes.size_id, sizeId));
+  } else {
+    // 🟢 Insert new size
+    const inserted = await db
+      .insert(sizes)
+      .values({
+        name: input.name,
+        size_number: input.sizeNumber ?? null,
+        size_type_id: input.sizeTypeId ?? null,
+      })
+      .returning({ id: sizes.id });
+
+    sizeId = inserted[0]?.id;
+  }
+
+  // 🌍 Insert country-specific sizes
+  if (input.countrySizes?.length && sizeId) {
+    await db.insert(countrySizes).values(
+      input.countrySizes.map((cs) => ({
+        size_id: sizeId!,
+        country_name: cs.countryName,
+        size_label: cs.sizeLabel,
+      }))
+    );
+  }
+
+  return {
+    result: "Success",
+    sizeId,
+  };
+};
+
+export const getSizeTypes= async()=>{
+  const result = await db.select().from(sizeTypes);
+  return result
 }
 
-export async function getAllGenderList() {
-  return await db.select().from(genders);
-}
+
+export const getAllGenders = async () => {
+  const result = await db
+    .select({
+      id: genders.id,
+      name: genders.name,
+    })
+    .from(genders);
+
+  return result;
+};

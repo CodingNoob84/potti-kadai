@@ -11,8 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+
 import {
-  createUpdateCategory,
+  createOrUpdateCategory,
   getAllSubCategorieList,
 } from "@/server/categories";
 import { FromCategoryType } from "@/types/categories";
@@ -37,12 +38,12 @@ export const CategorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
   slug: z.string().min(1, "Slug is required"),
   description: z.string(),
-  isActive: z.boolean().default(true),
+  is_active: z.boolean().default(true),
   subcategories: z.array(
     z.object({
       id: z.number(),
       name: z.string(),
-      isActive: z.boolean().default(true),
+      is_active: z.boolean().default(true),
     })
   ),
 });
@@ -68,13 +69,13 @@ export const AddEditCategory = ({ type, initialCategory }: Props) => {
       name: "",
       slug: "",
       description: "",
-      isActive: true,
+      is_active: true,
       subcategories: [],
     },
   });
 
   const mutation = useMutation({
-    mutationFn: createUpdateCategory,
+    mutationFn: createOrUpdateCategory,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["allcategories"] });
       closeModal();
@@ -91,7 +92,7 @@ export const AddEditCategory = ({ type, initialCategory }: Props) => {
         name: "",
         slug: "",
         description: "",
-        isActive: true,
+        is_active: true,
         subcategories: [],
       }
     );
@@ -172,9 +173,9 @@ export const AddEditCategory = ({ type, initialCategory }: Props) => {
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="status"
-                    checked={formMethods.watch("isActive")}
+                    checked={formMethods.watch("is_active")}
                     onCheckedChange={(val) =>
-                      formMethods.setValue("isActive", val)
+                      formMethods.setValue("is_active", val)
                     }
                   />
                   <Label htmlFor="status">Active</Label>

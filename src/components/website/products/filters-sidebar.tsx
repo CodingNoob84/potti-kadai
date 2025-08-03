@@ -3,7 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   getAllCategorieList,
-  getAllGenderList,
+  getAllGenders,
   getSubCategoriesWithCategory,
 } from "@/server/categories";
 import { getColorsUsedInVariants } from "@/server/products";
@@ -21,7 +21,7 @@ export const GenderFilter = ({
 }: GenderFilterProps) => {
   const { data: genders, isLoading } = useQuery({
     queryKey: ["all-genders"],
-    queryFn: getAllGenderList,
+    queryFn: getAllGenders,
   });
 
   const handleGenderChange = (genderId: number, checked: boolean) => {

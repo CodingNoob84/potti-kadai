@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
+
 import {
   Select,
   SelectContent,
@@ -25,11 +27,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Box, ListTree, Package, Tags } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { CategorySearch } from "./categories-search";
+import { SubcategorySearchBox } from "./subcategory-search";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(50),
@@ -40,7 +43,9 @@ const formSchema = z.object({
     .min(1, "Minimum quantity must be at least 1")
     .default(1),
   appliedTo: z.enum(["all", "category", "subcategory", "product"]),
-  appliedToId: z.string().optional(),
+  categoryIds: z.array(z.number()).optional(),
+  subcategoryIds: z.array(z.number()).optional(),
+  productIds: z.array(z.number()).optional(),
 });
 
 interface NewDiscountModalProps {
@@ -60,6 +65,9 @@ export function NewDiscountModal({
       value: 10,
       minQuantity: 1,
       appliedTo: "all",
+      categoryIds: [],
+      subcategoryIds: [],
+      productIds: [],
     },
   });
 
@@ -102,13 +110,13 @@ export function NewDiscountModal({
                 control={form.control}
                 name="type"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="w-full">
                     <FormLabel>Discount Type</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
-                      <FormControl>
+                      <FormControl className="w-full">
                         <SelectTrigger>
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
@@ -129,7 +137,7 @@ export function NewDiscountModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {form.getValues("type") === "percentage"
+                      {form.watch("type") === "percentage"
                         ? "Percentage"
                         : "Amount"}
                     </FormLabel>
@@ -145,7 +153,7 @@ export function NewDiscountModal({
                           {...field}
                         />
                         <span className="absolute right-3 top-2.5 text-muted-foreground text-sm">
-                          {form.getValues("type") === "percentage" ? "%" : "$"}
+                          {form.watch("type") === "percentage" ? "%" : "₹"}
                         </span>
                       </div>
                     </FormControl>
@@ -227,75 +235,36 @@ export function NewDiscountModal({
                 )}
               />
 
-              {appliedTo !== "all" && (
-                <div className="mt-4">
-                  <FormField
-                    control={form.control}
-                    name="appliedToId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {appliedTo === "category" && "Select Category"}
-                          {appliedTo === "subcategory" && "Select Subcategory"}
-                          {appliedTo === "product" && "Select Product"}
-                        </FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          disabled={!appliedTo}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue
-                                placeholder={`Select ${appliedTo}`}
-                              />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {appliedTo === "category" && (
-                              <>
-                                <SelectItem value="electronics">
-                                  Electronics
-                                </SelectItem>
-                                <SelectItem value="clothing">
-                                  Clothing
-                                </SelectItem>
-                                <SelectItem value="home">
-                                  Home & Garden
-                                </SelectItem>
-                              </>
-                            )}
-                            {appliedTo === "subcategory" && (
-                              <>
-                                <SelectItem value="laptops">Laptops</SelectItem>
-                                <SelectItem value="t-shirts">
-                                  T-Shirts
-                                </SelectItem>
-                                <SelectItem value="furniture">
-                                  Furniture
-                                </SelectItem>
-                              </>
-                            )}
-                            {appliedTo === "product" && (
-                              <>
-                                <SelectItem value="prod-123">
-                                  MacBook Pro
-                                </SelectItem>
-                                <SelectItem value="prod-456">
-                                  iPhone 15
-                                </SelectItem>
-                                <SelectItem value="prod-789">
-                                  Leather Sofa
-                                </SelectItem>
-                              </>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+              {appliedTo === "category" && (
+                <FormField
+                  control={form.control}
+                  name="categoryIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categories</FormLabel>
+                      <FormControl>
+                        <CategorySearch field={field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {appliedTo === "subcategory" && (
+                <FormField
+                  control={form.control}
+                  name="subcategoryIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categories</FormLabel>
+                      <FormControl>
+                        <SubcategorySearchBox field={field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
             </div>
 

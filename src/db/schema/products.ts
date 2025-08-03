@@ -4,154 +4,18 @@ import {
   boolean,
   integer,
   pgTable,
-  primaryKey,
   real,
   serial,
   text,
-  timestamp,
+  timestamp
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
+import { categories, colors, genders, sizes, subcategories } from "./category";
 
-// -----------------------
-// Categories Table
-// -----------------------
 
-export const categories = pgTable("categories", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  slug: text("slug").notNull(),
-  description: text("description").notNull(),
-  isActive: boolean("isactive").default(true).notNull(),
-});
 
-export const categoriesRelations = relations(categories, ({ many }) => ({
-  categorySubcategories: many(categorySubcategories),
-}));
 
-// -----------------------
-// Subcategories Table
-// -----------------------
 
-export const subcategories = pgTable("subcategories", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  isActive: boolean("isactive").default(true).notNull(),
-});
-
-export const subcategoriesRelations = relations(subcategories, ({ many }) => ({
-  categorySubcategories: many(categorySubcategories),
-}));
-
-// -----------------------
-// Category_Subcategory (Many-to-Many) Table
-// -----------------------
-
-export const categorySubcategories = pgTable(
-  "category_subcategories",
-  {
-    categoryId: integer("category_id")
-      .notNull()
-      .references(() => categories.id),
-    subcategoryId: integer("subcategory_id")
-      .notNull()
-      .references(() => subcategories.id),
-  },
-  (table) => ({
-    pk: primaryKey({ columns: [table.categoryId, table.subcategoryId] }),
-  })
-);
-
-export const categorySubcategoriesRelations = relations(
-  categorySubcategories,
-  ({ one }) => ({
-    category: one(categories, {
-      fields: [categorySubcategories.categoryId],
-      references: [categories.id],
-    }),
-    subcategory: one(subcategories, {
-      fields: [categorySubcategories.subcategoryId],
-      references: [subcategories.id],
-    }),
-  })
-);
-
-export const sizes = pgTable("sizes", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  sizenumber: integer("sizenumber"), // in cm
-  indiaSize: text("india_size"),
-  usSize: text("us_size"),
-  euSize: text("eu_size"),
-  ukSize: text("uk_size"),
-  typeId: integer("type_id").references(() => sizeTypes.id), // Reference to size type
-});
-
-export const sizeTypes = pgTable("sizeTypes", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-});
-
-export const subcategorySizes = pgTable("subcategory_sizes", {
-  id: serial("id").primaryKey(),
-  subcategoryId: integer("subcategory_id")
-    .notNull()
-    .references(() => subcategories.id, { onDelete: "cascade" }),
-  sizeId: integer("size_id")
-    .notNull()
-    .references(() => sizes.id, { onDelete: "cascade" }),
-  // You can add additional fields specific to this relationship if needed
-  // For example, whether this size is commonly used for this subcategory
-  isCommon: boolean("is_common").default(false),
-});
-
-export const subcategorySizesRelations = relations(
-  subcategorySizes,
-  ({ one }) => ({
-    subcategory: one(subcategories, {
-      fields: [subcategorySizes.subcategoryId],
-      references: [subcategories.id],
-    }),
-    size: one(sizes, {
-      fields: [subcategorySizes.sizeId],
-      references: [sizes.id],
-    }),
-  })
-);
-
-export const colors = pgTable("availablecolors", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
-  colorCode: text("colorcode").notNull().unique(),
-  isActive: boolean("isactive").default(true).notNull(),
-});
-
-export const productTags = pgTable("product_tags", {
-  id: serial("id").primaryKey(),
-  productId: integer("product_id").references(() => products.id),
-  tag: text("tag").notNull(),
-});
-
-export const discounts = pgTable("discounts", {
-  id: serial("id").primaryKey(),
-  productId: integer("product_id").references(() => products.id),
-  type: text("type").notNull(),
-  value: real("value").notNull(),
-  minQuantity: integer("min_quantity"),
-});
-
-export const promocodes = pgTable("promocodes", {
-  id: serial("id").primaryKey(),
-  productId: integer("product_id").references(() => products.id),
-  promocode: text("promocode").notNull(),
-  value: real("value").notNull(),
-  type: text("type").notNull(),
-});
-
-export const genders = pgTable("gender", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-});
 
 export const productGenders = pgTable("product_genders", {
   id: serial("id").primaryKey(),

@@ -1,19 +1,13 @@
 "use server";
 import { db } from "@/db/drizzle";
 import { user } from "@/db/schema/auth";
+import { categories, colors, countrySizes, sizes, subcategories } from "@/db/schema/category";
 import {
-  categories,
-  colors,
-  discounts,
   productGenders,
   productImages,
   productReviews,
   products,
-  productTags,
   productVariants,
-  promocodes,
-  sizes,
-  subcategories,
 } from "@/db/schema/products";
 import { and, avg, eq, gte, inArray, lte, sql } from "drizzle-orm";
 
@@ -30,7 +24,7 @@ export async function getColorsUsedInVariants() {
     .selectDistinct({
       id: colors.id,
       name: colors.name,
-      hex: colors.colorCode,
+      hex: colors.color_code,
     })
     .from(productVariants)
     .innerJoin(colors, eq(productVariants.colorId, colors.id));
@@ -42,7 +36,7 @@ export async function getSizesByOptions(categoryId: number) {
     .select()
     .from(sizes)
     //.where(and(eq(sizes.categoryId, categoryId), eq(sizes.type, type)))
-    .orderBy(sizes.sizenumber);
+    .orderBy(sizes.id);
 
   return result;
 }
@@ -78,10 +72,7 @@ export const createOrUpdateProduct = async (input: CreateProductInput) => {
     gender,
     category,
     subcategory,
-    tags,
     images,
-    discounts: inputDiscounts,
-    promocodes: inputPromocodes,
     inventory,
   } = input;
 
@@ -122,10 +113,8 @@ export const createOrUpdateProduct = async (input: CreateProductInput) => {
       db
         .delete(productVariants)
         .where(eq(productVariants.productId, productId)),
-      db.delete(productTags).where(eq(productTags.productId, productId)),
+
       db.delete(productGenders).where(eq(productGenders.productId, productId)),
-      db.delete(discounts).where(eq(discounts.productId, productId)),
-      db.delete(promocodes).where(eq(promocodes.productId, productId)),
     ]);
   }
 
@@ -164,38 +153,13 @@ export const createOrUpdateProduct = async (input: CreateProductInput) => {
   }
 
   // Insert discounts
-  if (inputDiscounts && inputDiscounts.length > 0) {
-    await db.insert(discounts).values(
-      inputDiscounts.map((disc) => ({
-        productId,
-        type: disc.type,
-        value: disc.value,
-        minQuantity: disc.quantity,
-      }))
-    );
-  }
-
+  
+  
   // Insert promocodes
-  if (inputPromocodes && inputPromocodes.length > 0) {
-    await db.insert(promocodes).values(
-      inputPromocodes.map((promo) => ({
-        productId,
-        type: promo.type,
-        value: promo.value,
-        promocode: promo.promocode,
-      }))
-    );
-  }
+
 
   // Insert tags
-  if (tags && tags.length > 0) {
-    await db.insert(productTags).values(
-      tags.map((tag) => ({
-        productId,
-        tag,
-      }))
-    );
-  }
+  
 
   return { productId };
 };
@@ -282,33 +246,12 @@ export const getTopProducts = async () => {
   }
 
   // Step 3: Get all discounts for those products
-  const discountsData = await db
-    .select({
-      productId: discounts.productId,
-      type: discounts.type,
-      value: discounts.value,
-      minQuantity: discounts.minQuantity,
-    })
-    .from(discounts)
-    .where(inArray(discounts.productId, productIds));
 
-  type Discount = {
-    type: string;
-    value: number;
-    minQuantity: number | null;
-  };
+
+
 
   // Group discounts by productId
-  const discountMap = new Map<number, Discount[]>();
-  for (const d of discountsData) {
-    const list = discountMap.get(d.productId!) ?? [];
-    list.push({
-      type: d.type,
-      value: d.value,
-      minQuantity: d.minQuantity,
-    });
-    discountMap.set(d.productId!, list);
-  }
+
 
   // Step 4: Merge and return final structure
   const merged = topProducts.map((product) => ({
@@ -316,7 +259,7 @@ export const getTopProducts = async () => {
     name: product.name,
     price: product.price,
     images: imageMap.get(product.id) ?? [],
-    discount: discountMap.get(product.id) ?? [],
+    discount:  [],
   }));
 
   return merged;
@@ -394,35 +337,30 @@ export const getProductById = async (
     .where(eq(productImages.productId, productId));
 
   // 3. Fetch discount if available
-  const discount = await db
-    .select({
-      type: discounts.type,
-      value: discounts.value,
-      minQuantity: discounts.minQuantity,
-    })
-    .from(discounts)
-    .where(eq(discounts.productId, productId));
+
 
   // 4. Fetch inventory and group by color
   const variants = await db
-    .select({
-      colorId: colors.id,
-      colorName: colors.name,
-      colorCode: colors.colorCode,
-      sizeId: sizes.id,
-      sizeName: sizes.name,
-      quantity: productVariants.quantity,
-      indiaSize: sizes.indiaSize,
-      usSize: sizes.usSize,
-      ukSize: sizes.ukSize,
-      euSize: sizes.euSize,
-      productVariantId: productVariants.id,
-    })
-    .from(productVariants)
-    .innerJoin(sizes, eq(productVariants.sizeId, sizes.id))
-    .innerJoin(colors, eq(productVariants.colorId, colors.id))
-    .where(eq(productVariants.productId, productId))
-    .orderBy(sizes.id);
+  .select({
+    colorId: colors.id,
+    colorName: colors.name,
+    colorCode: colors.color_code,
+    sizeId: sizes.id,
+    sizeName: sizes.name,
+    quantity: productVariants.quantity,
+    indiaSize: countrySizes.size_label, // filter or map for IND later
+    usSize: countrySizes.size_label,    // same for US...
+    ukSize: countrySizes.size_label,
+    euSize: countrySizes.size_label,
+    countryName: countrySizes.country_name,
+    productVariantId: productVariants.id,
+  })
+  .from(productVariants)
+  .innerJoin(sizes, eq(productVariants.sizeId, sizes.id))
+  .innerJoin(colors, eq(productVariants.colorId, colors.id))
+  .innerJoin(countrySizes, eq(sizes.id, countrySizes.size_id))
+  .where(eq(productVariants.productId, productId))
+  .orderBy(sizes.id);
 
   // Group by color → colorId, name, colorCode, sizes[]
   type InventoryItem = {
@@ -493,7 +431,7 @@ export const getProductById = async (
   return {
     ...productData,
     images,
-    discounts: discount,
+    discounts: [],
     inventory: Array.from(colorMap.values()),
     rating: averageRating,
     reviews,
@@ -536,30 +474,16 @@ export const getProductDetailsById = async (productId: number) => {
   ).map((g) => g.genderId.toString());
 
   // 3. Fetch discount if available
-  const discount = await db
-    .select({
-      type: discounts.type,
-      value: discounts.value,
-      quantity: discounts.minQuantity,
-    })
-    .from(discounts)
-    .where(eq(discounts.productId, productId));
+ 
 
-  const promocode = await db
-    .select({
-      type: promocodes.type,
-      promocode: promocodes.promocode,
-      value: promocodes.value,
-    })
-    .from(promocodes)
-    .where(eq(promocodes.productId, productId));
+  
 
   // 4. Fetch inventory and group by color
   const variants = await db
     .select({
       colorId: colors.id,
       colorName: colors.name,
-      colorCode: colors.colorCode,
+      colorCode: colors.color_code,
       sizeId: sizes.id,
       sizeName: sizes.name,
       quantity: productVariants.quantity,
@@ -600,8 +524,8 @@ export const getProductDetailsById = async (productId: number) => {
     ...productData,
     images,
     gender: genderIds,
-    discounts: discount,
-    promocodes: promocode,
+    discounts: [],
+    promocodes: [],
     inventory: Array.from(colorMap.values()),
   };
 };
@@ -678,30 +602,7 @@ export const getProductDetailsByIdEdit = async (
   ).map((g) => g.genderId.toString());
 
   // 4. Fetch discounts
-  const discount = await db
-    .select({
-      type: discounts.type,
-      value: discounts.value,
-      quantity: discounts.minQuantity,
-    })
-    .from(discounts)
-    .where(eq(discounts.productId, productId))
-    .then((res) =>
-      res.map((d) => ({
-        ...d,
-        quantity: d.quantity === null ? undefined : d.quantity,
-      }))
-    );
-
-  // 5. Fetch promocodes
-  const promocode = await db
-    .select({
-      type: promocodes.type,
-      promocode: promocodes.promocode,
-      value: promocodes.value,
-    })
-    .from(promocodes)
-    .where(eq(promocodes.productId, productId));
+  
 
   //const type= await db.select({type:sizes.type}).from(sizes).eq
 
@@ -710,7 +611,7 @@ export const getProductDetailsByIdEdit = async (
     .select({
       colorId: colors.id,
       colorName: colors.name,
-      colorCode: colors.colorCode,
+      colorCode: colors.color_code,
       sizeId: sizes.id,
       sizeName: sizes.name,
       //type: sizes.type,
@@ -752,8 +653,8 @@ export const getProductDetailsByIdEdit = async (
     subcategory: productData.subcategory ?? 0,
     images,
     gender: genderIds,
-    discounts: discount,
-    promocodes: promocode,
+    discounts: [],
+    promocodes: [],
     inventory: Array.from(colorMap.values()),
     // type: type ?? "",
   };
@@ -934,32 +835,11 @@ export const getProductFilters = async (filters: ProductFilterParams) => {
   }
 
   // STEP 5: Discounts
-  const discountsData = await db
-    .select({
-      productId: discounts.productId,
-      type: discounts.type,
-      value: discounts.value,
-      minQuantity: discounts.minQuantity,
-    })
-    .from(discounts)
-    .where(inArray(discounts.productId, productIds));
+ 
 
-  type Discount = {
-    type: string;
-    value: number;
-    minQuantity: number | null;
-  };
 
-  const discountMap = new Map<number, Discount[]>();
-  for (const d of discountsData) {
-    const list = discountMap.get(d.productId!) ?? [];
-    list.push({
-      type: d.type,
-      value: d.value,
-      minQuantity: d.minQuantity,
-    });
-    discountMap.set(d.productId!, list);
-  }
+
+
 
   // STEP 6: Final return
   const result = finalProducts.map((p) => ({
@@ -969,7 +849,7 @@ export const getProductFilters = async (filters: ProductFilterParams) => {
     avgRating: ratingMap.get(p.id)?.avgRating ?? 0,
     reviewCount: ratingMap.get(p.id)?.reviewCount ?? 0,
     imageUrl: imageMap.get(p.id) ?? null,
-    discounts: discountMap.get(p.id) ?? [],
+    discounts:  [],
   }));
 
   return {

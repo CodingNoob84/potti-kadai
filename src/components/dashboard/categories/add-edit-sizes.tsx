@@ -1,5 +1,13 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,15 +25,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { addSize, updateSize } from "@/server/categories"; // Ensure these exist
+
+import { createOrUpdateSize } from "@/server/categories";
 import { Size } from "@/types/categories";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { z } from "zod";
 
 const sizeSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -33,7 +35,6 @@ const sizeSchema = z.object({
   usSize: z.string().optional(),
   euSize: z.string().optional(),
   indiaSize: z.string().optional(),
-  categoryId: z.number(),
 });
 
 export const AddEditSize = ({
@@ -56,64 +57,66 @@ export const AddEditSize = ({
       usSize: "",
       euSize: "",
       indiaSize: "",
-      //categoryId: initialSize?.categoryId ?? 1, // fallback to 1 if undefined
     },
   });
 
   useEffect(() => {
-    if (initialSize) {
+    if (open && initialSize) {
+      const countryMap = Object.fromEntries(
+        initialSize.country_sizes.map((cs) => [
+          cs.country_name.toLowerCase(),
+          cs.size_label,
+        ])
+      );
+
       form.reset({
         name: initialSize.name,
-        ukSize: initialSize.ukSize || "",
-        usSize: initialSize.usSize || "",
-        euSize: initialSize.euSize || "",
-        indiaSize: initialSize.indiaSize || "",
-        //categoryId: initialSize.categoryId ?? 1,
+        ukSize: countryMap["uk"] || "",
+        usSize: countryMap["us"] || "",
+        euSize: countryMap["eu"] || "",
+        indiaSize: countryMap["ind"] || "",
       });
-    } else {
+    } else if (!initialSize) {
       form.reset({
         name: "",
         ukSize: "",
         usSize: "",
         euSize: "",
         indiaSize: "",
-        categoryId: 1,
       });
     }
-  }, [initialSize, form]);
+  }, [open, initialSize, form]);
 
-  const addSizeMutation = useMutation({
-    mutationFn: (data: z.infer<typeof sizeSchema>) =>
-      addSize({ ...data, type: sizeType ?? "" }),
+  const mutation = useMutation({
+    mutationFn: async (data: z.infer<typeof sizeSchema>) => {
+      const countrySizes = [
+        data.ukSize && { countryName: "UK", sizeLabel: data.ukSize },
+        data.usSize && { countryName: "US", sizeLabel: data.usSize },
+        data.euSize && { countryName: "EU", sizeLabel: data.euSize },
+        data.indiaSize && { countryName: "IND", sizeLabel: data.indiaSize },
+      ].filter(Boolean) as { countryName: string; sizeLabel: string }[];
+
+      return createOrUpdateSize({
+        id: initialSize?.id,
+        name: data.name,
+        sizeTypeId: initialSize?.size_type.id ?? 0,
+        countrySizes,
+      });
+    },
     onSuccess: () => {
+      toast.success(
+        `Size ${type === "Add" ? "added" : "updated"} successfully`
+      );
       queryClient.invalidateQueries({ queryKey: ["all-sizes"] });
-      toast.success("Size added successfully");
       setOpen(false);
     },
     onError: () => {
-      toast.error("Failed to add size");
-    },
-  });
-
-  const updateSizeMutation = useMutation({
-    mutationFn: (data: z.infer<typeof sizeSchema>) =>
-      updateSize({ id: initialSize?.id ?? 0, ...data }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["all-sizes"] });
-      toast.success("Size updated successfully");
-      setOpen(false);
-    },
-    onError: () => {
-      toast.error("Failed to update size");
+      toast.error(`Failed to ${type === "Add" ? "add" : "update"} size`);
     },
   });
 
   const onSubmit = (data: z.infer<typeof sizeSchema>) => {
-    if (type === "Add") {
-      addSizeMutation.mutate(data);
-    } else {
-      updateSizeMutation.mutate(data);
-    }
+    mutation.mutate(data);
   };
 
   return (
@@ -133,10 +136,9 @@ export const AddEditSize = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {type} {sizeType} size
+            {type} {sizeType} Size
           </DialogTitle>
         </DialogHeader>
-
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -154,61 +156,29 @@ export const AddEditSize = ({
             />
 
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="ukSize"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>UK Size</FormLabel>
-                    <FormControl>
-                      <Input placeholder="UK size" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="usSize"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>US Size</FormLabel>
-                    <FormControl>
-                      <Input placeholder="US size" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="euSize"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>EU Size</FormLabel>
-                    <FormControl>
-                      <Input placeholder="EU size" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="indiaSize"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Indian Size</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Indian size" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {["ukSize", "usSize", "euSize", "indiaSize"].map((key) => (
+                <FormField
+                  key={key}
+                  control={form.control}
+                  name={key as keyof z.infer<typeof sizeSchema>}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {key.replace("Size", "").toUpperCase()} Size
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={`${key
+                            .replace("Size", "")
+                            .toUpperCase()} size`}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ))}
             </div>
 
             <div className="flex justify-end space-x-2">
@@ -219,12 +189,7 @@ export const AddEditSize = ({
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={
-                  addSizeMutation.isPending || updateSizeMutation.isPending
-                }
-              >
+              <Button type="submit" disabled={mutation.isPending}>
                 {type === "Add" ? "Add" : "Update"}
               </Button>
             </div>

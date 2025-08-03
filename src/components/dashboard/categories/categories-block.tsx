@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  getAllCategories,
+  getAllCategoriesWithSubcategories,
   removeSubcategoryFromCategory,
 } from "@/server/categories";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,7 +25,7 @@ import { AddEditCategory } from "./add-edit-category";
 export const CategoriesBlock = () => {
   const queryClient = useQueryClient();
   const { data: AllCategories, isLoading } = useQuery({
-    queryFn: getAllCategories,
+    queryFn: getAllCategoriesWithSubcategories,
     queryKey: ["allcategories"],
   });
 
@@ -161,10 +161,10 @@ export const CategoriesBlock = () => {
                         <TableCell>
                           <Badge
                             variant={
-                              category.isActive ? "default" : "secondary"
+                              category.is_active ? "default" : "secondary"
                             }
                           >
-                            {category.isActive ? "Active" : "Inactive"}
+                            {category.is_active ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
                         <TableCell>

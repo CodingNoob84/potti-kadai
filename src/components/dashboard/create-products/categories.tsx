@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { productCreateType } from "@/form-schemas/product";
-import { getAllCategories } from "@/server/categories";
+import { getAllCategoriesWithSubcategories } from "@/server/categories";
+
 import { useQuery } from "@tanstack/react-query";
 import { UseFormReturn } from "react-hook-form";
 
@@ -26,11 +27,11 @@ type Category = {
   name: string;
   slug: string;
   description: string;
-  isActive: boolean;
+  is_active: boolean;
   subcategories: {
     id: number;
     name: string;
-    isActive: boolean;
+    is_active: boolean;
   }[];
 };
 
@@ -40,7 +41,7 @@ type AddCategoriesBlockProps = {
 
 export const AddCategoriesBlock = ({ form }: AddCategoriesBlockProps) => {
   const { data: allCategories = [], isLoading } = useQuery({
-    queryFn: getAllCategories,
+    queryFn: getAllCategoriesWithSubcategories,
     queryKey: ["allcategories"],
   });
 

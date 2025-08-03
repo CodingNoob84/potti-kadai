@@ -22,7 +22,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { productCreateType } from "@/form-schemas/product";
 import { getColors, getSizesByOptions } from "@/server/products";
-import { colorsTypes, DefaultsizeTypes } from "@/types/products";
+import { colorsTypes } from "@/types/products";
 import { useQuery } from "@tanstack/react-query";
 import { Info, Search, Trash2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -88,7 +88,7 @@ export const InventoryManagement = ({
       if (inventory.some((i: InventoryType) => i.colorId === color.id)) return;
 
       const selectedSizes =
-        sizesdata?.map((s: DefaultsizeTypes) => ({
+        sizesdata?.map((s) => ({
           sizeId: s.id,
           name: s.name,
           quantity: 0,
@@ -101,7 +101,7 @@ export const InventoryManagement = ({
           {
             colorId: color.id,
             name: color.name,
-            colorCode: color.colorCode,
+            colorCode: color.color_code,
             sizes: selectedSizes,
           },
         ],
@@ -173,7 +173,7 @@ export const InventoryManagement = ({
                             <div className="flex items-center space-x-2">
                               <div
                                 className="w-4 h-4 rounded-full border"
-                                style={{ backgroundColor: color.colorCode }}
+                                style={{ backgroundColor: color.color_code }}
                               />
                               <span>{color.name}</span>
                             </div>

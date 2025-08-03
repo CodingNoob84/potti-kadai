@@ -10,15 +10,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
-  createUpdateSubCategory,
+  createOrUpdateSubCategory,
   getAllCategorieList,
+  getSizeTypes,
 } from "@/server/categories";
-import { FromSubCategoryType } from "@/types/categories";
+
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Edit, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { useState } from "react";
+import { FormProvider, useForm, useFormContext } from "react-hook-form";
 import { z } from "zod";
 import { CategoryCombobox } from "./category-combobox";
 
@@ -26,26 +35,78 @@ import { CategoryCombobox } from "./category-combobox";
 export const SubCategorySchema = z.object({
   id: z.number(),
   name: z.string().min(1, "Subcategory name is required"),
-
-  isActive: z.boolean().default(true),
+  is_active: z.boolean().default(true),
+  size_type_id: z.number().min(1, "Size type is required"),
   categories: z
     .array(
       z.object({
         id: z.number(),
         name: z.string(),
-        slug: z.string(),
-        description: z.string(),
-        isActive: z.boolean(),
+        is_active: z.boolean(),
       })
     )
     .min(1, "At least one category is required"),
 });
 
-export type SubCategoryFormValues = z.infer<typeof SubCategorySchema>;
+export type SubCategoryFormValues = z.input<typeof SubCategorySchema>;
+
+type FromSubCategoryType = {
+  id: number;
+  name: string;
+  is_active: boolean;
+  size_type_id: number;
+  size_type_name: string;
+  categories: {
+    id: number;
+    name: string;
+    is_active: boolean;
+  }[];
+};
 
 type Props = {
   type: "Add" | "Edit";
   initialSubCategory?: FromSubCategoryType;
+};
+
+const SizeTypeSelect = () => {
+  const { data: SizeTypes } = useQuery({
+    queryKey: ["size-types"],
+    queryFn: getSizeTypes,
+  });
+  const { setValue, watch, formState } =
+    useFormContext<SubCategoryFormValues>();
+
+  const currentValue = watch("size_type_id");
+
+  return (
+    <div className="space-y-2 w-full">
+      <Label>Size Type</Label>
+      <Select
+        value={currentValue === 0 ? "" : currentValue.toString()}
+        onValueChange={(val) =>
+          setValue("size_type_id", val ? parseInt(val) : 0)
+        }
+      >
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Select a size type" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            {SizeTypes?.map((type) => (
+              <SelectItem key={type.id} value={type.id.toString()}>
+                {type.name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+      {formState.errors.size_type_id && (
+        <p className="text-sm text-red-500">
+          {formState.errors.size_type_id.message}
+        </p>
+      )}
+    </div>
+  );
 };
 
 export const AddEditSubCategory = ({ type, initialSubCategory }: Props) => {
@@ -54,13 +115,15 @@ export const AddEditSubCategory = ({ type, initialSubCategory }: Props) => {
     queryKey: ["category-options"],
     queryFn: getAllCategorieList,
   });
+
   const [isOpen, setIsOpen] = useState(false);
-  const formMethods = useForm({
+  const formMethods = useForm<SubCategoryFormValues>({
     resolver: zodResolver(SubCategorySchema),
     defaultValues: initialSubCategory ?? {
       id: 0,
       name: "",
-      isActive: true,
+      is_active: true,
+      size_type_id: 0,
       categories: [],
     },
   });
@@ -70,7 +133,8 @@ export const AddEditSubCategory = ({ type, initialSubCategory }: Props) => {
       initialSubCategory ?? {
         id: 0,
         name: "",
-        isActive: true,
+        is_active: true,
+        size_type_id: 0,
         categories: [],
       }
     );
@@ -82,7 +146,7 @@ export const AddEditSubCategory = ({ type, initialSubCategory }: Props) => {
   };
 
   const mutation = useMutation({
-    mutationFn: createUpdateSubCategory,
+    mutationFn: createOrUpdateSubCategory,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["all-subcategories"] });
       closeModal();
@@ -95,16 +159,11 @@ export const AddEditSubCategory = ({ type, initialSubCategory }: Props) => {
   const onSubmit = async (data: SubCategoryFormValues) => {
     console.log("Form submitted:", data);
     try {
-      await mutation.mutateAsync(data); // this keeps isSubmitting = true during submission
+      await mutation.mutateAsync(data);
     } catch (error) {
       console.error("Submission failed:", error);
     }
-    closeModal();
   };
-
-  useEffect(() => {
-    formMethods.setFocus("name");
-  }, [formMethods]);
 
   return (
     <>
@@ -143,9 +202,9 @@ export const AddEditSubCategory = ({ type, initialSubCategory }: Props) => {
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="status"
-                    checked={formMethods.watch("isActive")}
+                    checked={formMethods.watch("is_active")}
                     onCheckedChange={(val) =>
-                      formMethods.setValue("isActive", val)
+                      formMethods.setValue("is_active", val)
                     }
                   />
                   <Label htmlFor="status">Active</Label>
@@ -160,6 +219,8 @@ export const AddEditSubCategory = ({ type, initialSubCategory }: Props) => {
                     </p>
                   )}
                 </div>
+
+                <SizeTypeSelect />
               </div>
 
               <div className="flex justify-end gap-2 pt-4">

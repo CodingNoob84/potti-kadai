@@ -1,11 +1,10 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getProductDetailsById } from "@/server/products";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Package, Percent, Ticket } from "lucide-react";
+import { Loader2, Package, Ticket } from "lucide-react";
 import Image from "next/image";
 
 export const ProductDetailsInExpand = ({
@@ -85,30 +84,30 @@ export const ProductDetailsInExpand = ({
                     >
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-primary/10 rounded-full">
-                          {discount.type === "direct" ? (
+                          {/* {discount?.type === "direct" ? (
                             <Percent className="h-4 w-4 text-primary" />
                           ) : (
                             <Package className="h-4 w-4 text-primary" />
-                          )}
+                          )} */}
                         </div>
                         <div>
-                          <p className="font-medium">
+                          {/* <p className="font-medium">
                             {discount.type === "direct"
                               ? `Flat ${discount.value}% off`
                               : `Buy ${discount.quantity} get ${discount.value}% off`}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
+                          </p> */}
+                          {/* <p className="text-xs text-muted-foreground">
                             {discount.type === "direct"
                               ? "On all purchases"
                               : `Minimum ${discount.quantity} items required`}
-                          </p>
+                          </p> */}
                         </div>
                       </div>
-                      <Badge variant="secondary" className="px-3 py-1">
+                      {/* <Badge variant="secondary" className="px-3 py-1">
                         {discount.type === "direct"
                           ? `${discount.value}% OFF`
                           : `${discount.value}% OFF`}
-                      </Badge>
+                      </Badge> */}
                     </div>
                   ))}
                 </div>
@@ -138,15 +137,15 @@ export const ProductDetailsInExpand = ({
                           <Ticket className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                          <p className="font-medium">{promo.promocode}</p>
+                          {/* <p className="font-medium">{promo.promocode}</p> */}
                           <p className="text-xs text-muted-foreground">
                             Valid until {new Date().toLocaleDateString()}
                           </p>
                         </div>
                       </div>
-                      <Badge variant="secondary" className="px-3 py-1">
+                      {/* <Badge variant="secondary" className="px-3 py-1">
                         {promo.value}% OFF
-                      </Badge>
+                      </Badge> */}
                     </div>
                   ))}
                 </div>

@@ -3,14 +3,12 @@
 import { db } from "@/db/drizzle";
 import { user } from "@/db/schema/auth";
 import { cartItems, orderItems, orders } from "@/db/schema/cart";
+import { colors, sizes } from "@/db/schema/category";
 
 import {
-  colors,
-  discounts,
   productImages,
   products,
   productVariants,
-  sizes,
 } from "@/db/schema/products";
 import { userAddresses } from "@/db/schema/user";
 import {
@@ -18,7 +16,6 @@ import {
   SHIPPING_CHARGES,
   TAX_PERCENTAGE,
 } from "@/lib/contants";
-import { DiscountType } from "@/types/products";
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 
@@ -51,7 +48,7 @@ export const getCartItems = async (
       variantId: productVariants.id,
       colorId: colors.id,
       colorName: colors.name,
-      colorCode: colors.colorCode,
+      colorCode: colors.color_code,
       sizeId: sizes.id,
       sizeName: sizes.name,
     })
@@ -96,53 +93,22 @@ export const getCartItems = async (
     imageMap.get(img.productId)!.push(img);
   }
 
-  // Get discounts and map them by productId
-  const allDiscounts = await db
-    .select({
-      productId: discounts.productId,
-      type: discounts.type,
-      value: discounts.value,
-      quantity: discounts.minQuantity,
-    })
-    .from(discounts)
-    .where(inArray(discounts.productId, uniqueProductIds as number[]));
 
-  const discountMap = new Map<number, DiscountType[]>();
-  for (const d of allDiscounts) {
-    const pid = d.productId!;
-    if (!discountMap.has(pid)) discountMap.set(pid, []);
-    discountMap.get(pid)!.push({
-      type: d.type ?? "percentage",
-      value: d.value ?? 0,
-      minQuantity: d.quantity ?? 1,
-    });
-  }
+
+
 
   // Final mapped cart items
   return filtered.map((r) => {
     const basePrice = r.productPrice || 0;
     const quantity = r.quantity || 1;
 
-    const discounts = discountMap.get(r.productId ?? 0) || [];
+    //const discounts =  [];
 
     // Find the best applicable discount
-    let discountedPercentage = 0;
-    let discountedPrice = basePrice;
+    const discountedPercentage = 0;
+    const discountedPrice = basePrice;
 
-    const bestQuantityDiscount = discounts
-      .filter((d) => d.type === "quantity" && quantity >= (d.minQuantity ?? 0))
-      .sort((a, b) => (b.minQuantity ?? 0) - (a.minQuantity ?? 0))[0];
-
-    const directDiscount = discounts.find((d) => d.type === "direct");
-
-    const bestDiscount = bestQuantityDiscount || directDiscount;
-
-    if (bestDiscount) {
-      discountedPercentage = bestDiscount.value;
-      discountedPrice = Math.round(
-        basePrice - (basePrice * discountedPercentage) / 100
-      );
-    }
+    
 
     // Match image by productId and colorId
     const images = imageMap.get(r?.productId || 0) || [];
@@ -350,98 +316,19 @@ export async function placeOrder({
   }
 
   // Fetch applicable discounts for products in the cart
-  const allDiscounts = await db
-    .select({
-      productId: discounts.productId,
-      type: discounts.type,
-      value: discounts.value,
-      minQuantity: discounts.minQuantity,
-    })
-    .from(discounts)
-    .where(
-      inArray(
-        discounts.productId,
-        filteredCart.map((c) => c.productId)
-      )
-    );
+  
 
   // Map discounts per product
-  const discountMap = new Map<number, DiscountType[]>();
-  for (const d of allDiscounts) {
-    const pid = d.productId!;
-    const discount: DiscountType = {
-      type: d.type ?? "percentage",
-      value: d.value ?? 0,
-      minQuantity: d.minQuantity ?? 1,
-    };
-    if (!discountMap.has(pid)) discountMap.set(pid, []);
-    discountMap.get(pid)!.push(discount);
-  }
+ 
 
-  const cartWithDiscount = filteredCart.map((item) => {
-    const basePrice = item.price || 0;
-    const quantity = item.orderedQuantity || 1;
 
-    const discounts = discountMap.get(item.productId ?? 0) || [];
-
-    let discountedPercentage = 0;
-    let discountedPrice = basePrice;
-    let bestDiscount: (typeof discounts)[0] | null = null;
-
-    // Quantity-based discount: pick highest % for qualifying quantity
-    const quantityDiscount =
-      discounts
-        .filter(
-          (d) => d.type === "quantity" && quantity >= (d.minQuantity ?? 0)
-        )
-        .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))[0] || null;
-
-    // Direct discount: pick highest %
-    const directDiscount =
-      discounts
-        .filter((d) => d.type === "direct")
-        .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))[0] || null;
-
-    // Compare by which gives lower final price
-    const discountOptions = [quantityDiscount, directDiscount].filter(Boolean);
-
-    if (discountOptions.length > 0) {
-      bestDiscount = discountOptions.sort((a, b) => {
-        const aPrice = basePrice - (basePrice * (a.value ?? 0)) / 100;
-        const bPrice = basePrice - (basePrice * (b.value ?? 0)) / 100;
-        return aPrice - bPrice;
-      })[0];
-
-      discountedPercentage = bestDiscount.value ?? 0;
-      discountedPrice = Math.round(
-        basePrice - (basePrice * discountedPercentage) / 100
-      );
-    }
-
-    return {
-      ...item,
-      discount: bestDiscount,
-      discountedPercentage,
-      discountedPrice,
-      totalOriginalPrice: basePrice * quantity,
-      totalFinalPrice: discountedPrice * quantity,
-    };
-  });
 
   // 2. Calculate totals
-  let orginalAmount = 0;
-  let totalAmount = 0;
-  let discountAmount = 0;
+  const orginalAmount = 0;
+  const totalAmount = 0;
+  const discountAmount = 0;
 
-  cartWithDiscount.forEach((item) => {
-    const quantity = item.orderedQuantity || 1;
-    const originalTotal = (item.price || 0) * quantity;
-    const discountedTotal =
-      (item.discountedPrice || item.price || 0) * quantity;
-    orginalAmount += originalTotal;
-    totalAmount += discountedTotal;
-    discountAmount += originalTotal - discountedTotal;
-  });
+
 
   let shippingAmount = SHIPPING_CHARGES;
   if (totalAmount > FREE_SHIPPING_LIMIT) {
@@ -470,17 +357,9 @@ export async function placeOrder({
     .returning();
 
   // 4. Insert into orderItems
-  const orderItemsData = cartWithDiscount.map((item) => ({
-    orderId: newOrder.id,
-    productId: item.productId,
-    productVariantId: item.productVariantId,
-    quantity: item.orderedQuantity,
-    orginalprice: item.totalOriginalPrice,
-    discount: item.discountedPrice,
-    finalprice: item.totalFinalPrice,
-  }));
 
-  await db.insert(orderItems).values(orderItemsData);
+
+  //await db.insert(orderItems).values();
 
   // 5. Clear cart
   await db.delete(cartItems).where(eq(cartItems.userId, userId));

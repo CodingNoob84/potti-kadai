@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { getAllSizesWithCategory } from "@/server/categories";
+import { getAllSizes } from "@/server/categories";
 import { Size } from "@/types/categories";
 import { useQuery } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
@@ -20,16 +20,14 @@ import { toast } from "sonner";
 import { AddEditSize } from "./add-edit-sizes";
 
 export const SizesBlock = () => {
-  //const queryClient = useQueryClient();
-
   const { data, isLoading } = useQuery({
-    queryFn: getAllSizesWithCategory,
+    queryFn: getAllSizes,
     queryKey: ["all-sizes"],
   });
 
   const groupSizesByCategoryType = (data: Size[] = []) => {
     return data.reduce((acc, size) => {
-      const groupKey = `${size.name}`;
+      const groupKey = `${size.size_type?.name ?? "Unknown"}`;
       if (!acc[groupKey]) {
         acc[groupKey] = [];
       }
@@ -44,13 +42,21 @@ export const SizesBlock = () => {
     toast.info("Only Super Admin Can Delete!!!");
   };
 
+  const getCountryLabel = (country: "UK" | "US" | "EU" | "IND", size: Size) => {
+    return (
+      size.country_sizes?.find(
+        (cs) => cs.country_name.toUpperCase() === country
+      )?.size_label ?? "-"
+    );
+  };
+
   return (
     <div className="p-2 space-y-8">
       {Object.entries(grouped).map(([groupKey, sizes]) => (
         <div key={groupKey}>
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">{groupKey}</h2>
-            <AddEditSize type="Add" sizeType={"upper"} />
+            <AddEditSize type="Add" sizeType={groupKey} />
           </div>
 
           <Card>
@@ -62,7 +68,7 @@ export const SizesBlock = () => {
                     <TableHead>UK</TableHead>
                     <TableHead>US</TableHead>
                     <TableHead>EU</TableHead>
-                    <TableHead>Indian</TableHead>
+                    <TableHead>India</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -82,22 +88,22 @@ export const SizesBlock = () => {
                           <TableCell className="font-medium">
                             {size.name}
                           </TableCell>
-                          <TableCell>{size.ukSize || "-"}</TableCell>
-                          <TableCell>{size.usSize || "-"}</TableCell>
-                          <TableCell>{size.euSize || "-"}</TableCell>
-                          <TableCell>{size.indiaSize || "-"}</TableCell>
+                          <TableCell>{getCountryLabel("UK", size)}</TableCell>
+                          <TableCell>{getCountryLabel("US", size)}</TableCell>
+                          <TableCell>{getCountryLabel("EU", size)}</TableCell>
+                          <TableCell>{getCountryLabel("IND", size)}</TableCell>
                           <TableCell>
                             <div className="flex justify-end space-x-2">
                               <AddEditSize
                                 type="Edit"
-                                sizeType={""}
+                                sizeType={groupKey}
                                 initialSize={size}
                               />
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="text-red-500 hover:text-red-700"
-                                onClick={() => handleDelete()}
+                                onClick={handleDelete}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

@@ -32,7 +32,7 @@ export const SubcategoryCombobox = ({
   const addSubcategory = (item: {
     id: number;
     name: string;
-    isActive: boolean;
+    is_active: boolean;
   }) => {
     const alreadyAdded = selected.some(
       (sub: SubCategoryType) => sub.id === item.id
@@ -88,7 +88,7 @@ export const SubcategoryCombobox = ({
                 >
                   <Check className="mr-2 h-4 w-4 opacity-0" />
                   <div className="flex-1">{item.name}</div>
-                  {item.isActive && (
+                  {item.is_active && (
                     <Badge variant="outline" className="ml-2">
                       Active
                     </Badge>

@@ -12,8 +12,8 @@ export type DefaultsizeTypes = {
 export type colorsTypes = {
   id: number;
   name: string;
-  colorCode: string;
-  isActive: boolean;
+  color_code: string;
+  is_active: boolean;
 };
 
 export type sizeTypes = {

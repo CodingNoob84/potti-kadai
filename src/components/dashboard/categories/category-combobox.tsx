@@ -27,7 +27,7 @@ export const CategoryCombobox = ({ options }: { options: CategoryType[] }) => {
   const addCategory = (item: {
     id: number;
     name: string;
-    isActive: boolean;
+    is_active: boolean;
   }) => {
     const alreadyAdded = selected.some(
       (cat: CategoryType) => cat.id === item.id
@@ -83,7 +83,7 @@ export const CategoryCombobox = ({ options }: { options: CategoryType[] }) => {
                 >
                   <Check className="mr-2 h-4 w-4 opacity-0" />
                   <div className="flex-1">{item.name}</div>
-                  {item.isActive && (
+                  {item.is_active && (
                     <Badge variant="outline" className="ml-2">
                       Active
                     </Badge>

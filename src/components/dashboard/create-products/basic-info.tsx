@@ -152,7 +152,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { productCreateType } from "@/form-schemas/product";
-import { getAllCategories } from "@/server/categories";
+import {
+  getAllCategorieList,
+  getSubCategoriesByCategoryId,
+} from "@/server/categories";
 import { useQuery } from "@tanstack/react-query";
 import { UseFormReturn } from "react-hook-form";
 
@@ -170,11 +173,17 @@ export const ProductBasicInfo = ({
 }) => {
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ["categories"],
-    queryFn: getAllCategories,
+    queryFn: getAllCategorieList,
   });
 
   const selectedCategoryId = form.watch("category");
-  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+  //const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+
+  const { data: subcategories = [] } = useQuery({
+    queryKey: ["subcategories-list"],
+    queryFn: () => getSubCategoriesByCategoryId(selectedCategoryId),
+    enabled: !!selectedCategoryId,
+  });
 
   return (
     <Card>
@@ -244,7 +253,7 @@ export const ProductBasicInfo = ({
             control={form.control}
             name="isactive"
             render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <FormItem className="flex flex-row items-center justify-between ">
                 <div className="space-y-0.5">
                   <FormLabel className="text-base">Active</FormLabel>
                   <p className="text-sm text-muted-foreground">
@@ -338,13 +347,13 @@ export const ProductBasicInfo = ({
                     <Select
                       onValueChange={(val) => field.onChange(Number(val))}
                       value={field.value?.toString()}
-                      disabled={!selectedCategory?.subcategories?.length}
+                      disabled={!selectedCategoryId}
                     >
                       <FormControl>
                         <SelectTrigger className="w-full">
                           <SelectValue
                             placeholder={
-                              selectedCategory?.subcategories?.length
+                              subcategories?.length
                                 ? "Select subcategory"
                                 : "No subcategories available"
                             }
@@ -352,7 +361,7 @@ export const ProductBasicInfo = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {selectedCategory?.subcategories?.map((sub) => (
+                        {subcategories?.map((sub) => (
                           <SelectItem key={sub.id} value={sub.id.toString()}>
                             {sub.name}
                           </SelectItem>
