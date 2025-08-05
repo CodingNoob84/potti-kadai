@@ -1,4 +1,5 @@
 "use client";
+import { PromoCodeType } from "@/app/(dashboard)/dashboard/promocodes/page";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import {
@@ -23,6 +24,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -31,17 +33,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { createOrUpdatePromoCode } from "@/server/offers";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Calendar } from "lucide-react";
-import { useState } from "react";
+import { Box, Calendar, ListTree, Package, Tags } from "lucide-react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
-import { ProductSearchComboBox } from "./products-search";
+import { CategorySearch } from "../discounts/categories-search";
+import { SubcategorySearchBox } from "../discounts/subcategory-search";
 
 const formSchema = z.object({
+  id: z.number(),
   code: z.string().min(3, "Code must be at least 3 characters").max(20),
-  type: z.enum(["percentage", "amount"]),
+  type: z.string(),
   value: z.coerce.number().min(1, "Value must be at least 1"),
   minQuantity: z.coerce
     .number()
@@ -49,87 +56,96 @@ const formSchema = z.object({
     .default(1),
   validFrom: z.date(),
   validTo: z.date(),
-  maxUses: z.coerce.number().min(0, "Must be 0 or more").optional(),
+  maxUses: z.coerce.number().min(0, "Must be 0 or more").default(0),
   usesPerUser: z.coerce.number().min(1, "Must be at least 1").default(1),
-  appliesTo: z.enum(["all", "category", "product"]).default("all"),
-  appliesToId: z.string().optional(),
-  productIds: z.array(z.string()).optional(), // Changed to array of strings
+  appliedTo: z.string(),
+  categoryIds: z.array(z.number()).optional(),
+  subcategoryIds: z.array(z.number()).optional(),
+  productIds: z.array(z.number()).optional(),
 });
 
 interface NewPromoCodeModalProps {
+  type: "Create" | "Edit";
+  promoCodeValues?: PromoCodeType;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-interface Product {
-  id: string;
-  name: string;
-  sku?: string;
-  price: number;
-  category?: string;
-}
-
-// Sample product data
-const products = [
-  {
-    id: "prod-1",
-    name: "Premium Headphones",
-    sku: "PH-1001",
-    price: 199.99,
-    category: "Audio",
-  },
-  {
-    id: "prod-2",
-    name: "Wireless Earbuds",
-    sku: "WE-2002",
-    price: 129.99,
-    category: "Audio",
-  },
-  {
-    id: "prod-3",
-    name: "Smart Watch",
-    sku: "SW-3003",
-    price: 249.99,
-    category: "Wearables",
-  },
-];
-
 export function NewPromoCodeModal({
+  type,
+  promoCodeValues,
   open,
   onOpenChange,
 }: NewPromoCodeModalProps) {
+  const queryClient = useQueryClient();
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      id: 0,
       code: "",
       type: "percentage",
       value: 10,
       minQuantity: 1,
       validFrom: new Date(),
       validTo: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+      maxUses: 0,
       usesPerUser: 1,
-      appliesTo: "all",
+      appliedTo: "all",
+      categoryIds: [],
+      subcategoryIds: [],
       productIds: [],
     },
   });
-  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
 
-  const handleSelectProduct = (product: Product) => {
-    if (!selectedProducts.some((p) => p.id === product.id)) {
-      setSelectedProducts([...selectedProducts, product]);
+  // Reset form when promoCodeValues changes
+  useEffect(() => {
+    if (promoCodeValues) {
+      form.reset({
+        ...promoCodeValues,
+        minQuantity: promoCodeValues.minQuantity ?? 1,
+        validFrom: new Date(promoCodeValues.validFrom),
+        validTo: new Date(promoCodeValues.validTo),
+      });
+    } else {
+      form.reset({
+        id: 0,
+        code: "",
+        type: "percentage",
+        value: 10,
+        minQuantity: 1,
+        validFrom: new Date(),
+        validTo: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+        maxUses: 0,
+        usesPerUser: 1,
+        appliedTo: "all",
+        categoryIds: [],
+        subcategoryIds: [],
+        productIds: [],
+      });
     }
-  };
+  }, [form, promoCodeValues, open]);
 
-  const handleRemoveProduct = (productId: string) => {
-    setSelectedProducts(selectedProducts.filter((p) => p.id !== productId));
-  };
+  const appliedTo = form.watch("appliedTo");
 
-  const appliesTo = form.watch("appliesTo");
+  const createUpdateMutation = useMutation({
+    mutationFn: createOrUpdatePromoCode,
+    onSuccess: () => {
+      const sMessage =
+        type === "Create"
+          ? "Your discount has been created successfully."
+          : "Your discount has been updated successfully.";
+      toast.success(sMessage);
+      queryClient.invalidateQueries({ queryKey: ["all-promocodes"] });
+      onOpenChange(false);
+      form.reset();
+    },
+    onError: () => {
+      toast.error("An error occurred while processing your request.");
+    },
+  });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    onOpenChange(false);
-    form.reset();
+    createUpdateMutation.mutate(values);
   }
 
   return (
@@ -348,88 +364,95 @@ export function NewPromoCodeModal({
               />
             </div>
 
-            <div className="space-y-4">
+            <div>
+              <h3 className="font-medium mb-3">Apply Discount To</h3>
               <FormField
                 control={form.control}
-                name="appliesTo"
+                name="appliedTo"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Applies To</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select what this applies to" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="all">All Products</SelectItem>
-                        <SelectItem value="category">
-                          Specific Category
-                        </SelectItem>
-                        <SelectItem value="product">
-                          Specific Product
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {appliesTo === "category" && (
-                <FormField
-                  control={form.control}
-                  name="appliesToId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Select Category</FormLabel>
-                      <Select
+                  <FormItem className="space-y-3">
+                    <FormControl>
+                      <RadioGroup
                         onValueChange={field.onChange}
                         defaultValue={field.value}
+                        className="grid grid-cols-1 md:grid-cols-2 gap-3"
                       >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="electronics">
-                            Electronics
-                          </SelectItem>
-                          <SelectItem value="clothing">Clothing</SelectItem>
-                          <SelectItem value="home">Home & Garden</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-            </div>
-
-            {appliesTo === "product" && (
-              <FormField
-                control={form.control}
-                name="productIds"
-                render={({}) => (
-                  <FormItem>
-                    <FormLabel>Select Products</FormLabel>
-                    <FormControl>
-                      <ProductSearchComboBox
-                        products={products}
-                        selectedProducts={selectedProducts}
-                        onSelect={handleSelectProduct}
-                        onRemove={handleRemoveProduct}
-                      />
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="all" />
+                          </FormControl>
+                          <FormLabel className="font-normal flex items-center gap-2">
+                            <Package className="h-4 w-4" />
+                            All Products
+                          </FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="category" />
+                          </FormControl>
+                          <FormLabel className="font-normal flex items-center gap-2">
+                            <ListTree className="h-4 w-4" />
+                            Specific Category
+                          </FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="subcategory" />
+                          </FormControl>
+                          <FormLabel className="font-normal flex items-center gap-2">
+                            <Tags className="h-4 w-4" />
+                            Specific Subcategory
+                          </FormLabel>
+                        </FormItem>
+                        <FormItem className="flex items-center space-x-3 space-y-0">
+                          <FormControl>
+                            <RadioGroupItem value="product" />
+                          </FormControl>
+                          <FormLabel className="font-normal flex items-center gap-2">
+                            <Box className="h-4 w-4" />
+                            Specific Product
+                          </FormLabel>
+                        </FormItem>
+                      </RadioGroup>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            )}
+              <div className="pt-4">
+                {appliedTo === "category" && (
+                  <FormField
+                    control={form.control}
+                    name="categoryIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categories</FormLabel>
+                        <FormControl>
+                          <CategorySearch field={field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {appliedTo === "subcategory" && (
+                  <FormField
+                    control={form.control}
+                    name="subcategoryIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categories</FormLabel>
+                        <FormControl>
+                          <SubcategorySearchBox field={field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+            </div>
 
             <DialogFooter className="mt-4">
               <Button
@@ -439,7 +462,13 @@ export function NewPromoCodeModal({
               >
                 Cancel
               </Button>
-              <Button type="submit">Create Promo Code</Button>
+              <Button type="submit">
+                {createUpdateMutation.isPending
+                  ? "Loading..."
+                  : type === "Create"
+                  ? "Create Promo Code"
+                  : "Save Changes"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

@@ -11,25 +11,14 @@ export const productCreateSchema = z.object({
   price: z.coerce.number().min(1, { message: "Price must be at least 1" }),
   gender: z.array(z.string()).min(1, "Please select at least one gender"),
   isactive: z.boolean(),
-  discounts: z.array(
-    z.object({
-      type: z.string(),
-      value: z.number(),
-      quantity: z.number().optional(),
-    })
-  ),
-  promocodes: z.array(
-    z.object({
-      type: z.string(),
-      promocode: z.string(),
-      value: z.number(),
-    })
-  ),
   category: z.number(),
   subcategory: z.number(),
-  //type: z.string(),
-  tags: z.array(z.string()),
-  images: z.array(z.string()),
+  images: z.array(
+    z.object({
+      url: z.string().url(),
+      colorId: z.number(),
+    })
+  ),
   inventory: z.array(
     z.object({
       colorId: z.number(),

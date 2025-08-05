@@ -11,6 +11,13 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Form } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,25 +28,14 @@ import {
 } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { productCreateType } from "@/form-schemas/product";
-import { getColors, getSizesByOptions } from "@/server/products";
+import { getColors } from "@/server/products";
+import { getSizesByOptions } from "@/server/sizes";
 import { colorsTypes } from "@/types/products";
 import { useQuery } from "@tanstack/react-query";
 import { Info, Search, Trash2 } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import Image from "next/image";
+import { useCallback, useMemo, useState } from "react";
 import { UseFormReturn } from "react-hook-form";
-
-type sizeType = {
-  quantity: number;
-  name: string;
-  sizeId: number;
-};
-
-type InventoryType = {
-  name: string;
-  sizes: sizeType[];
-  colorCode: string;
-  colorId: number;
-};
 
 export const InventoryManagement = ({
   form,
@@ -47,27 +43,24 @@ export const InventoryManagement = ({
   form: UseFormReturn<productCreateType>;
 }) => {
   const { watch, setValue } = form;
+  const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(
+    null
+  );
 
-  const categoryId = watch("category");
-  //const type = watch("type");
-  const inventory: InventoryType[] = watch("inventory") || [];
+  const subcategoryId = watch("subcategory");
+  const images = watch("images") || [];
+  const inventory = watch("inventory") || [];
 
-  const {
-    data: sizesdata = [],
-    isLoading: isLoadingSizes,
-    isFetching: isFetchingSizes,
-  } = useQuery({
-    queryKey: ["sizes", categoryId],
-    queryFn: ({ queryKey }) => {
-      const [, categoryId, type] = queryKey;
-      if (!categoryId || !type) return [];
-      return getSizesByOptions(Number(categoryId));
-    },
-    enabled: !!categoryId,
+  const { data: sizesdata = [], isLoading: loadingSizes } = useQuery({
+    queryKey: ["sizes", subcategoryId],
+    queryFn: () =>
+      subcategoryId ? getSizesByOptions(Number(subcategoryId)) : [],
+    enabled: !!subcategoryId,
     staleTime: Infinity,
   });
 
-  const { data: colorsdata = [], isLoading: isLoadingColors } = useQuery({
+  const { data: colorsdata = [], isLoading: loadingColors } = useQuery({
     queryKey: ["colors"],
     queryFn: getColors,
     staleTime: Infinity,
@@ -76,7 +69,7 @@ export const InventoryManagement = ({
   const totalQuantity = useMemo(
     () =>
       inventory.reduce(
-        (total: number, item: InventoryType) =>
+        (total, item) =>
           total + item.sizes.reduce((sum, s) => sum + s.quantity, 0),
         0
       ),
@@ -85,14 +78,13 @@ export const InventoryManagement = ({
 
   const addColor = useCallback(
     (color: colorsTypes) => {
-      if (inventory.some((i: InventoryType) => i.colorId === color.id)) return;
+      if (inventory.some((i) => i.colorId === color.id)) return;
 
-      const selectedSizes =
-        sizesdata?.map((s) => ({
-          sizeId: s.id,
-          name: s.name,
-          quantity: 0,
-        })) || [];
+      const selectedSizes = sizesdata.map((s) => ({
+        sizeId: s.id,
+        name: s.name,
+        quantity: 0,
+      }));
 
       setValue(
         "inventory",
@@ -114,32 +106,64 @@ export const InventoryManagement = ({
   const removeColor = useCallback(
     (colorId: number) => {
       setValue(
+        "images",
+        images.map((img) =>
+          img.colorId === colorId ? { ...img, colorId: 0 } : img
+        ),
+        { shouldValidate: true }
+      );
+      setValue(
         "inventory",
-        inventory.filter((i: InventoryType) => i.colorId !== colorId),
+        inventory.filter((i) => i.colorId !== colorId),
+        { shouldValidate: true }
+      );
+    },
+    [inventory, images, setValue]
+  );
+
+  const updateQuantity = useCallback(
+    (colorId: number, sizeId: number, quantity: number) => {
+      setValue(
+        "inventory",
+        inventory.map((i) =>
+          i.colorId === colorId
+            ? {
+                ...i,
+                sizes: i.sizes.map((s) =>
+                  s.sizeId === sizeId ? { ...s, quantity } : s
+                ),
+              }
+            : i
+        ),
         { shouldValidate: true }
       );
     },
     [inventory, setValue]
   );
 
-  const updateQuantity = useCallback(
-    (colorId: number, sizeId: number, quantity: number) => {
-      const updatedInventory = inventory.map((i: InventoryType) =>
-        i.colorId === colorId
-          ? {
-              ...i,
-              sizes: i.sizes.map((s: sizeType) =>
-                s.sizeId === sizeId ? { ...s, quantity } : s
-              ),
-            }
-          : i
-      );
-      setValue("inventory", updatedInventory, { shouldValidate: true });
-    },
-    [inventory, setValue]
-  );
+  const handleImageSelect = (colorId: number) => {
+    setSelectedColorId(colorId);
+    const existing = images.findIndex((img) => img.colorId === colorId);
+    setSelectedImageIndex(existing >= 0 ? existing : null);
+  };
 
-  const isLoading = isLoadingSizes || isFetchingSizes || isLoadingColors;
+  const handleImageSubmit = () => {
+    if (selectedColorId === null) return;
+
+    const updated = images.map((img, idx) => {
+      if (idx === selectedImageIndex)
+        return { ...img, colorId: selectedColorId };
+      if (img.colorId === selectedColorId) return { ...img, colorId: 0 };
+      return img;
+    });
+    setValue("images", updated, { shouldValidate: true });
+    setSelectedColorId(null);
+    setSelectedImageIndex(null);
+  };
+
+  const isLoading = loadingSizes || loadingColors;
+  const hasImage = (colorId: number) =>
+    images.some((img) => img.colorId === colorId);
 
   return (
     <Card>
@@ -149,7 +173,6 @@ export const InventoryManagement = ({
       <CardContent className="space-y-6">
         <Form {...form}>
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Left Column */}
             <div className="space-y-4">
               <Popover>
                 <PopoverTrigger asChild>
@@ -164,11 +187,10 @@ export const InventoryManagement = ({
                     <CommandList>
                       <CommandEmpty>No colors found.</CommandEmpty>
                       <CommandGroup>
-                        {colorsdata.map((color: colorsTypes) => (
+                        {colorsdata.map((color) => (
                           <CommandItem
                             key={color.id}
                             onSelect={() => addColor(color)}
-                            disabled={isLoading}
                           >
                             <div className="flex items-center space-x-2">
                               <div
@@ -186,7 +208,7 @@ export const InventoryManagement = ({
               </Popover>
 
               <div className="flex flex-wrap gap-2">
-                {inventory.map((item: InventoryType) => (
+                {inventory.map((item) => (
                   <Badge
                     key={item.colorId}
                     variant="outline"
@@ -197,6 +219,9 @@ export const InventoryManagement = ({
                       style={{ backgroundColor: item.colorCode }}
                     />
                     <span>{item.name}</span>
+                    {hasImage(item.colorId) && (
+                      <span className="ml-1 text-green-500">✓</span>
+                    )}
                   </Badge>
                 ))}
               </div>
@@ -210,7 +235,6 @@ export const InventoryManagement = ({
               </div>
             </div>
 
-            {/* Right Column */}
             <div className="col-span-3 space-y-4">
               {isLoading ? (
                 <div className="space-y-4">
@@ -232,18 +256,32 @@ export const InventoryManagement = ({
                   ))}
                 </div>
               ) : inventory.length > 0 ? (
-                inventory.map((colorItem: InventoryType) => (
+                inventory.map((colorItem) => (
                   <div
                     key={colorItem.colorId}
                     className="border rounded-md p-4 space-y-2"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-4 h-4 rounded-full border"
-                          style={{ backgroundColor: colorItem.colorCode }}
-                        />
-                        <span className="font-semibold">{colorItem.name}</span>
+                      <div className="flex flex-row gap-4">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-6 h-6 rounded-full border"
+                            style={{ backgroundColor: colorItem.colorCode }}
+                          />
+                          <span className="font-semibold">
+                            {colorItem.name}
+                          </span>
+                        </div>
+                        <Button
+                          variant={
+                            hasImage(colorItem.colorId) ? "outline" : "ghost"
+                          }
+                          onClick={() => handleImageSelect(colorItem.colorId)}
+                        >
+                          {hasImage(colorItem.colorId)
+                            ? "Change Image"
+                            : "Image Link"}
+                        </Button>
                       </div>
                       <Button
                         type="button"
@@ -254,15 +292,14 @@ export const InventoryManagement = ({
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                      {colorItem.sizes.map((size: sizeType) => (
+                      {colorItem.sizes.map((size) => (
                         <div key={size.sizeId} className="flex flex-col gap-1">
                           <Label>{size.name}</Label>
                           <Input
                             type="number"
                             min="0"
-                            value={size.quantity?.toString() || ""}
+                            value={size.quantity.toString()}
                             onChange={(e) =>
                               updateQuantity(
                                 colorItem.colorId,
@@ -278,7 +315,7 @@ export const InventoryManagement = ({
                 ))
               ) : (
                 <div className="flex items-center justify-center h-32 text-muted-foreground">
-                  {categoryId
+                  {subcategoryId
                     ? "Select a color to add inventory"
                     : "Select a category and type first"}
                 </div>
@@ -287,6 +324,67 @@ export const InventoryManagement = ({
           </div>
         </Form>
       </CardContent>
+
+      <Dialog
+        open={selectedColorId !== null}
+        onOpenChange={(open) => !open && setSelectedColorId(null)}
+      >
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Select Image for Color Variant</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto">
+            {images.map((image, index) => (
+              <div
+                key={image.url}
+                className={`relative aspect-square cursor-pointer rounded-md border-2 ${
+                  selectedImageIndex === index
+                    ? "border-primary"
+                    : "border-transparent"
+                }`}
+                onClick={() => setSelectedImageIndex(index)}
+              >
+                <Image
+                  src={image.url}
+                  alt="Product image"
+                  fill
+                  className="object-cover rounded-md"
+                />
+                {image.colorId && (
+                  <div className="absolute bottom-2 left-2">
+                    <div
+                      className="h-4 w-4 rounded-full border border-white shadow-sm"
+                      style={{
+                        backgroundColor:
+                          colorsdata.find((c) => c.id === image.colorId)
+                            ?.color_code || "transparent",
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedImageIndex(null);
+                handleImageSubmit();
+              }}
+            >
+              Clear Image
+            </Button>
+            <Button
+              type="button"
+              onClick={handleImageSubmit}
+              disabled={selectedImageIndex === null}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

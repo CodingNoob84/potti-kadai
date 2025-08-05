@@ -13,6 +13,7 @@ type ProductFormTypes = {
 };
 
 export const ProductForm = ({ type, form, onSubmit }: ProductFormTypes) => {
+  console.log("type", type);
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

@@ -1,3 +1,4 @@
+"use client";
 import { DiscountsList } from "@/components/dashboard/discounts/discounts-list";
 
 export default function DiscountsPage() {

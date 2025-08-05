@@ -177,7 +177,6 @@ export const ProductBasicInfo = ({
   });
 
   const selectedCategoryId = form.watch("category");
-  //const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
 
   const { data: subcategories = [] } = useQuery({
     queryKey: ["subcategories-list"],
@@ -340,7 +339,7 @@ export const ProductBasicInfo = ({
               name="subcategory"
               render={({ field }) => (
                 <FormItem className="w-full">
-                  <FormLabel>Subcategory</FormLabel>
+                  <FormLabel>Subcategory *</FormLabel>
                   {isLoading ? (
                     <Skeleton className="h-10 w-full" />
                   ) : (

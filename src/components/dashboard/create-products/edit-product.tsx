@@ -21,7 +21,7 @@ export const EditProduct = ({
     mutationFn: createOrUpdateProduct,
     onSuccess: (data) => {
       if (data.productId) {
-        toast.success("Product has been created");
+        toast.success("Product has been successfully updated");
         form.reset();
       }
     },
@@ -34,5 +34,5 @@ export const EditProduct = ({
     createMutation.mutate(data);
   };
 
-  return <ProductForm type="Create" form={form} onSubmit={onSubmit} />;
+  return <ProductForm type="Edit" form={form} onSubmit={onSubmit} />;
 };

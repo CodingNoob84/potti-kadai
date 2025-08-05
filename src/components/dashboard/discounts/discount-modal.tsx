@@ -27,39 +27,63 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+import { createOrUpdateDiscount } from "@/server/offers";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Box, ListTree, Package, Tags } from "lucide-react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 import { CategorySearch } from "./categories-search";
 import { SubcategorySearchBox } from "./subcategory-search";
 
 const formSchema = z.object({
+  id: z.number().optional(),
   name: z.string().min(2, "Name must be at least 2 characters").max(50),
-  type: z.enum(["percentage", "amount"]),
+  type: z.string(),
   value: z.coerce.number().min(1, "Value must be at least 1"),
   minQuantity: z.coerce
     .number()
     .min(1, "Minimum quantity must be at least 1")
     .default(1),
-  appliedTo: z.enum(["all", "category", "subcategory", "product"]),
+  appliedTo: z.string(),
   categoryIds: z.array(z.number()).optional(),
   subcategoryIds: z.array(z.number()).optional(),
   productIds: z.array(z.number()).optional(),
 });
 
+type DiscountsType = {
+  categoryIds?: number[]; // optional, consistent with zod schema
+  subcategoryIds?: number[]; // optional
+  productIds?: number[];
+  id: number;
+  name: string;
+  type: string;
+  value: number;
+  minQuantity: number;
+  appliedTo: string;
+};
+
 interface NewDiscountModalProps {
+  type: "Create" | "Edit";
+  discountValues?: DiscountsType;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function NewDiscountModal({
+  type,
+  discountValues,
   open,
   onOpenChange,
 }: NewDiscountModalProps) {
+  const queryClient = useQueryClient();
   const form = useForm({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: discountValues ?? {
+      id: 0,
       name: "",
       type: "percentage",
       value: 10,
@@ -70,14 +94,47 @@ export function NewDiscountModal({
       productIds: [],
     },
   });
-
   const appliedTo = form.watch("appliedTo");
 
+  const createUpdateMutation = useMutation({
+    mutationFn: createOrUpdateDiscount,
+    onSuccess: (data) => {
+      console.log("data", data);
+      const sMessage =
+        type === "Create"
+          ? "Your discount has been created successfully."
+          : "Your discount has been updated successfully.";
+      toast.success(sMessage);
+      queryClient.invalidateQueries({ queryKey: ["all-discounts"] });
+      onOpenChange(false);
+      form.reset();
+    },
+    onError: () => {
+      toast.error("An error occurred while processing your request.");
+    },
+  });
+
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    onOpenChange(false);
-    form.reset();
+    createUpdateMutation.mutate(values);
   }
+
+  useEffect(() => {
+    if (discountValues) {
+      form.reset(discountValues);
+    } else {
+      form.reset({
+        id: 0,
+        name: "",
+        type: "percentage",
+        value: 10,
+        minQuantity: 1,
+        appliedTo: "all",
+        categoryIds: [],
+        subcategoryIds: [],
+        productIds: [],
+      });
+    }
+  }, [form, discountValues, open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -234,38 +291,39 @@ export function NewDiscountModal({
                   </FormItem>
                 )}
               />
+              <div className="pt-4">
+                {appliedTo === "categories" && (
+                  <FormField
+                    control={form.control}
+                    name="categoryIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categories</FormLabel>
+                        <FormControl>
+                          <CategorySearch field={field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
-              {appliedTo === "category" && (
-                <FormField
-                  control={form.control}
-                  name="categoryIds"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Categories</FormLabel>
-                      <FormControl>
-                        <CategorySearch field={field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {appliedTo === "subcategory" && (
-                <FormField
-                  control={form.control}
-                  name="subcategoryIds"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Categories</FormLabel>
-                      <FormControl>
-                        <SubcategorySearchBox field={field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
+                {appliedTo === "subcategories" && (
+                  <FormField
+                    control={form.control}
+                    name="subcategoryIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categories</FormLabel>
+                        <FormControl>
+                          <SubcategorySearchBox field={field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
             </div>
 
             <DialogFooter className="mt-6">
@@ -276,7 +334,13 @@ export function NewDiscountModal({
               >
                 Cancel
               </Button>
-              <Button type="submit">Create Discount</Button>
+              <Button type="submit">
+                {createUpdateMutation.isPending
+                  ? "Loading..."
+                  : type === "Create"
+                  ? "Create Promo Code"
+                  : "Save Changes"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

@@ -8,16 +8,21 @@ import {
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  BadgePercent,
   BarChart3,
   ChevronDown,
   ChevronRight,
-  FolderPlus,
+  Layers,
   LayoutDashboard,
   List,
   Package,
   Plus,
+  Ruler,
   Settings,
   ShoppingCart,
+  Tag,
+  Tags,
+  Ticket,
   UserCheck,
   Users,
 } from "lucide-react";
@@ -61,23 +66,33 @@ const menuItems: MenuItem[] = [
       {
         title: "Categories",
         href: "/dashboard/products/categories",
-        icon: <FolderPlus className="h-4 w-4" />,
+        icon: <Tags className="h-4 w-4" />, // or <Layers className="h-4 w-4" />
+      },
+      {
+        title: "SubCategories",
+        href: "/dashboard/products/subcategories",
+        icon: <Layers className="h-4 w-4" />, // or <Tag className="h-4 w-4" />
+      },
+      {
+        title: "Sizes",
+        href: "/dashboard/products/sizes",
+        icon: <Ruler className="h-4 w-4" />, // or <Size className="h-4 w-4" />
       },
     ],
   },
   {
     title: "Offers",
-    icon: <ShoppingCart className="h-4 w-4" />,
+    icon: <BadgePercent className="h-4 w-4" />, // or <Megaphone className="h-4 w-4" />
     submenu: [
       {
         title: "Discounts",
         href: "/dashboard/discounts",
-        icon: <List className="h-4 w-4" />,
+        icon: <Tag className="h-4 w-4" />, // or <Sale className="h-4 w-4" />
       },
       {
         title: "Promocodes",
         href: "/dashboard/promocodes",
-        icon: <BarChart3 className="h-4 w-4" />,
+        icon: <Ticket className="h-4 w-4" />, // or <TicketPercent className="h-4 w-4" />
       },
     ],
   },

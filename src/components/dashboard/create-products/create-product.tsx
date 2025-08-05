@@ -14,12 +14,8 @@ const initialValues: productCreateType = {
   price: 1,
   gender: [],
   isactive: true,
-  discounts: [],
-  promocodes: [],
   category: 0,
   subcategory: 0,
-  //type: "",
-  tags: [],
   images: [],
   inventory: [],
 };
@@ -34,7 +30,7 @@ export const CreateProduct = () => {
     mutationFn: createOrUpdateProduct,
     onSuccess: (data) => {
       if (data.productId) {
-        toast.success("Product has been created");
+        toast.success("Product has been successfully created");
         form.reset();
       }
     },
@@ -44,6 +40,7 @@ export const CreateProduct = () => {
   });
 
   const onSubmit = (data: productCreateType) => {
+    console.log("data", data);
     createMutation.mutate(data);
   };
 

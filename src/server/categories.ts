@@ -1,7 +1,15 @@
 "use server";
 
 import { db } from "@/db/drizzle";
-import { categories, categorySubcategories, countrySizes, genders, sizes, sizeTypes, subcategories } from "@/db/schema/category";
+import {
+  categories,
+  categorySubcategories,
+  countrySizes,
+  genders,
+  sizes,
+  sizeTypes,
+  subcategories,
+} from "@/db/schema/category";
 import { FromCategoryType } from "@/types/categories";
 import { and, asc, eq, ilike } from "drizzle-orm";
 
@@ -12,61 +20,73 @@ export async function getAllCategoriesWithSubcategories() {
       categoryName: categories.name,
       categorySlug: categories.slug,
       categoryDesc: categories.description,
-      categoryIsActive:categories.is_active,
+      categoryIsActive: categories.is_active,
       subcategoryId: subcategories.id,
       subcategoryName: subcategories.name,
-      subcatIsActive:subcategories.is_active
+      subcatIsActive: subcategories.is_active,
     })
     .from(categories)
-    .leftJoin(categorySubcategories, eq(categories.id, categorySubcategories.category_id))
-    .leftJoin(subcategories, eq(categorySubcategories.subcategory_id, subcategories.id));
+    .leftJoin(
+      categorySubcategories,
+      eq(categories.id, categorySubcategories.category_id)
+    )
+    .leftJoin(
+      subcategories,
+      eq(categorySubcategories.subcategory_id, subcategories.id)
+    );
 
   // Group by category
   const result = Object.values(
-    categorySubcatData.reduce((acc, row) => {
-      const catId = row.categoryId;
-      if (!acc[catId]) {
-        acc[catId] = {
-          id: row.categoryId,
-          name: row.categoryName,
-          slug: row.categorySlug,
-          description: row.categoryDesc,
-          is_active:row.categoryIsActive,
-          subcategories: [],
-        };
-      }
+    categorySubcatData.reduce(
+      (acc, row) => {
+        const catId = row.categoryId;
+        if (!acc[catId]) {
+          acc[catId] = {
+            id: row.categoryId,
+            name: row.categoryName,
+            slug: row.categorySlug,
+            description: row.categoryDesc,
+            is_active: row.categoryIsActive,
+            subcategories: [],
+          };
+        }
 
-      if (row.subcategoryId) {
-        acc[catId].subcategories.push({
-          id: row.subcategoryId,
-          name: row.subcategoryName ?? '',
-          is_active:row.subcatIsActive ?? false
-        });
-      }
+        if (row.subcategoryId) {
+          acc[catId].subcategories.push({
+            id: row.subcategoryId,
+            name: row.subcategoryName ?? "",
+            is_active: row.subcatIsActive ?? false,
+          });
+        }
 
-      return acc;
-    }, {} as Record<number, {
-      id: number;
-      name: string;
-      slug: string;
-      description: string;
-      is_active:boolean;
-      subcategories: { id: number; name: string, is_active:boolean }[];
-    }>)
+        return acc;
+      },
+      {} as Record<
+        number,
+        {
+          id: number;
+          name: string;
+          slug: string;
+          description: string;
+          is_active: boolean;
+          subcategories: { id: number; name: string; is_active: boolean }[];
+        }
+      >
+    )
   );
 
   return result;
 }
 
-type CategoryType={
+type CategoryType = {
   id: number;
-    name: string;
-    slug: string;
-    description: string;
-    is_active: boolean;
-    created_at: Date | null;
-    updated_at: Date | null;
-}
+  name: string;
+  slug: string;
+  description: string;
+  is_active: boolean;
+  created_at: Date | null;
+  updated_at: Date | null;
+};
 
 export const getAllCategorieList = async (): Promise<CategoryType[]> => {
   const result = await db
@@ -77,10 +97,6 @@ export const getAllCategorieList = async (): Promise<CategoryType[]> => {
 
   return result;
 };
-
-
-
-
 
 export const getAllSubCategorieList = async () => {
   const result = await db
@@ -107,7 +123,6 @@ export const getAllSubCategorieListSearch = async (searchTerm?: string) => {
 
   return result;
 };
-
 
 export const createOrUpdateCategory = async (input: FromCategoryType) => {
   let categoryId = input.id;
@@ -171,7 +186,6 @@ export const deleteCategory = async (categoryId: number) => {
   return { result: "Category deleted", categoryId };
 };
 
-
 export const removeSubcategoryFromCategory = async (
   categoryId: number,
   subcategoryId: number
@@ -192,8 +206,6 @@ export const removeSubcategoryFromCategory = async (
   };
 };
 
-
-
 export const getSubCategoriesWithCategory = async () => {
   const rows = await db
     .select({
@@ -202,10 +214,13 @@ export const getSubCategoriesWithCategory = async () => {
       subcategoryIsActive: subcategories.is_active,
       categoryId: categories.id,
       categoryName: categories.name,
-      categoryIsActive: categories.is_active
+      categoryIsActive: categories.is_active,
     })
     .from(subcategories)
-    .leftJoin(categorySubcategories, eq(subcategories.id, categorySubcategories.subcategory_id))
+    .leftJoin(
+      categorySubcategories,
+      eq(subcategories.id, categorySubcategories.subcategory_id)
+    )
     .leftJoin(categories, eq(categorySubcategories.category_id, categories.id));
 
   // Group by subcategory
@@ -216,19 +231,19 @@ export const getSubCategoriesWithCategory = async () => {
         acc[sid] = {
           id: sid,
           name: row.subcategoryName,
-          is_active:row.subcategoryIsActive ?? false,
+          is_active: row.subcategoryIsActive ?? false,
           categories: [],
         };
       }
       if (row.categoryId) {
         acc[sid].categories.push({
           id: row.categoryId,
-          name: row.categoryName ?? '',
-          is_active:row.categoryIsActive ?? false
+          name: row.categoryName ?? "",
+          is_active: row.categoryIsActive ?? false,
         });
       }
       return acc;
-    }, {} as Record<number, { id: number; name: string; is_active:boolean; categories: { id: number; name: string; is_active:boolean; }[] }>)
+    }, {} as Record<number, { id: number; name: string; is_active: boolean; categories: { id: number; name: string; is_active: boolean }[] }>)
   );
 
   return grouped;
@@ -247,51 +262,54 @@ export const getSubCategoriesWithOptions = async () => {
       sizeTypeName: sizeTypes.name,
     })
     .from(subcategories)
-    .leftJoin(categorySubcategories, eq(subcategories.id, categorySubcategories.subcategory_id))
+    .leftJoin(
+      categorySubcategories,
+      eq(subcategories.id, categorySubcategories.subcategory_id)
+    )
     .leftJoin(categories, eq(categorySubcategories.category_id, categories.id))
     .leftJoin(sizeTypes, eq(subcategories.size_type_id, sizeTypes.id));
 
   const grouped = Object.values(
-    rows.reduce((acc, row) => {
-      const sid = row.subcategoryId;
-      if (!acc[sid]) {
-        acc[sid] = {
-          id: sid,
-          name: row.subcategoryName,
-          is_active: row.subcategoryIsActive ?? false,
-          size_type_id: row.sizeTypeId ?? 0,
-          size_type_name: row.sizeTypeName ?? '',
-          categories: [],
-        };
-      }
+    rows.reduce(
+      (acc, row) => {
+        const sid = row.subcategoryId;
+        if (!acc[sid]) {
+          acc[sid] = {
+            id: sid,
+            name: row.subcategoryName,
+            is_active: row.subcategoryIsActive ?? false,
+            size_type_id: row.sizeTypeId ?? 0,
+            size_type_name: row.sizeTypeName ?? "",
+            categories: [],
+          };
+        }
 
-      if (row.categoryId) {
-        acc[sid].categories.push({
-          id: row.categoryId,
-          name: row.categoryName ?? '',
-          is_active: row.categoryIsActive ?? false,
-        });
-      }
+        if (row.categoryId) {
+          acc[sid].categories.push({
+            id: row.categoryId,
+            name: row.categoryName ?? "",
+            is_active: row.categoryIsActive ?? false,
+          });
+        }
 
-      
-
-      return acc;
-    }, {} as Record<
-      number,
-      {
-        id: number;
-        name: string;
-        is_active: boolean;
-        size_type_id: number;
-        size_type_name: string;
-        categories: { id: number; name: string; is_active: boolean }[];
-      }
-    >)
+        return acc;
+      },
+      {} as Record<
+        number,
+        {
+          id: number;
+          name: string;
+          is_active: boolean;
+          size_type_id: number;
+          size_type_name: string;
+          categories: { id: number; name: string; is_active: boolean }[];
+        }
+      >
+    )
   );
 
   return grouped;
 };
-
 
 export const getSubCategoriesByCategoryId = async (categoryId: number) => {
   const rows = await db
@@ -300,19 +318,20 @@ export const getSubCategoriesByCategoryId = async (categoryId: number) => {
       name: subcategories.name,
     })
     .from(subcategories)
-    .innerJoin(categorySubcategories, eq(subcategories.id, categorySubcategories.subcategory_id))
+    .innerJoin(
+      categorySubcategories,
+      eq(subcategories.id, categorySubcategories.subcategory_id)
+    )
     .where(eq(categorySubcategories.category_id, categoryId));
 
   return rows;
 };
 
-
-
 type SubcategoryInput = {
   id?: number;
   name: string;
   is_active?: boolean;
-  size_type_id:number;
+  size_type_id: number;
   categories?: { id: number }[];
 };
 
@@ -364,7 +383,6 @@ export const createOrUpdateSubCategory = async (input: SubcategoryInput) => {
   return { result: "Success", subcategoryId };
 };
 
-
 export const deleteSubCategory = async (subcategoryId: number) => {
   // Remove links from category_subcategories
   await db
@@ -376,8 +394,6 @@ export const deleteSubCategory = async (subcategoryId: number) => {
 
   return { result: "Subcategory deleted", subcategoryId };
 };
-
-
 
 export const getAllSizes = async () => {
   // Step 1: Fetch all sizes with their type
@@ -439,8 +455,6 @@ type SizeInput = {
   }[];
 };
 
-
-
 export const createOrUpdateSize = async (input: SizeInput) => {
   let sizeId = input.id;
 
@@ -456,9 +470,7 @@ export const createOrUpdateSize = async (input: SizeInput) => {
       .where(eq(sizes.id, sizeId));
 
     // 🧹 Delete existing country size links
-    await db
-      .delete(countrySizes)
-      .where(eq(countrySizes.size_id, sizeId));
+    await db.delete(countrySizes).where(eq(countrySizes.size_id, sizeId));
   } else {
     // 🟢 Insert new size
     const inserted = await db
@@ -490,11 +502,10 @@ export const createOrUpdateSize = async (input: SizeInput) => {
   };
 };
 
-export const getSizeTypes= async()=>{
+export const getSizeTypes = async () => {
   const result = await db.select().from(sizeTypes);
-  return result
-}
-
+  return result;
+};
 
 export const getAllGenders = async () => {
   const result = await db

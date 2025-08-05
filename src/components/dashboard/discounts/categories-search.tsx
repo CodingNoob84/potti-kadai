@@ -4,7 +4,7 @@
 import { getAllCategorieList } from "@/server/categories";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ControllerRenderProps } from "react-hook-form";
+import { ControllerRenderProps, FieldValues } from "react-hook-form";
 import { SearchBox } from "./search-box";
 
 type CategoryType = {
@@ -15,20 +15,8 @@ type CategoryType = {
   is_active: boolean;
 };
 
-// Define your form type
-type DiscountFormValues = {
-  name: string;
-  type: "percentage" | "amount";
-  value: number;
-  appliedTo: "category" | "subcategory" | "all" | "product";
-  minQuantity?: number;
-  categoryIds?: number[];
-  subcategoryIds?: number[];
-  productIds?: number[];
-};
-
 type CategorySearchProps = {
-  field: ControllerRenderProps<DiscountFormValues, "categoryIds">;
+  field: ControllerRenderProps<FieldValues["categoryIds"], string>;
   disabled?: boolean;
   className?: string;
   placeholder?: string;

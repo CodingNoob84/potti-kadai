@@ -1,7 +1,13 @@
 "use server";
 import { db } from "@/db/drizzle";
 import { user } from "@/db/schema/auth";
-import { categories, colors, countrySizes, sizes, subcategories } from "@/db/schema/category";
+import {
+  categories,
+  colors,
+  countrySizes,
+  sizes,
+  subcategories,
+} from "@/db/schema/category";
 import {
   productGenders,
   productImages,
@@ -30,17 +36,6 @@ export async function getColorsUsedInVariants() {
     .innerJoin(colors, eq(productVariants.colorId, colors.id));
 }
 
-export async function getSizesByOptions(categoryId: number) {
-  console.log("-->db", categoryId);
-  const result = await db
-    .select()
-    .from(sizes)
-    //.where(and(eq(sizes.categoryId, categoryId), eq(sizes.type, type)))
-    .orderBy(sizes.id);
-
-  return result;
-}
-
 interface CreateProductInput {
   id: number;
   title: string;
@@ -50,10 +45,7 @@ interface CreateProductInput {
   gender: string[];
   category: number;
   subcategory: number;
-  tags: string[];
-  images: string[];
-  discounts: { type: string; value: number; quantity?: number }[];
-  promocodes: { type: string; promocode: string; value: number }[];
+  images: { url: string; colorId: number }[];
   inventory: {
     colorId: number;
     name: string;
@@ -131,9 +123,10 @@ export const createOrUpdateProduct = async (input: CreateProductInput) => {
   // Insert images
   if (images.length > 0) {
     await db.insert(productImages).values(
-      images.map((url) => ({
-        productId,
-        url,
+      images.map((img) => ({
+        productId: productId,
+        url: img.url,
+        colorId: img.colorId,
       }))
     );
   }
@@ -151,15 +144,6 @@ export const createOrUpdateProduct = async (input: CreateProductInput) => {
   if (variantData.length > 0) {
     await db.insert(productVariants).values(variantData);
   }
-
-  // Insert discounts
-  
-  
-  // Insert promocodes
-
-
-  // Insert tags
-  
 
   return { productId };
 };
@@ -247,11 +231,7 @@ export const getTopProducts = async () => {
 
   // Step 3: Get all discounts for those products
 
-
-
-
   // Group discounts by productId
-
 
   // Step 4: Merge and return final structure
   const merged = topProducts.map((product) => ({
@@ -259,7 +239,7 @@ export const getTopProducts = async () => {
     name: product.name,
     price: product.price,
     images: imageMap.get(product.id) ?? [],
-    discount:  [],
+    discount: [],
   }));
 
   return merged;
@@ -338,29 +318,28 @@ export const getProductById = async (
 
   // 3. Fetch discount if available
 
-
   // 4. Fetch inventory and group by color
   const variants = await db
-  .select({
-    colorId: colors.id,
-    colorName: colors.name,
-    colorCode: colors.color_code,
-    sizeId: sizes.id,
-    sizeName: sizes.name,
-    quantity: productVariants.quantity,
-    indiaSize: countrySizes.size_label, // filter or map for IND later
-    usSize: countrySizes.size_label,    // same for US...
-    ukSize: countrySizes.size_label,
-    euSize: countrySizes.size_label,
-    countryName: countrySizes.country_name,
-    productVariantId: productVariants.id,
-  })
-  .from(productVariants)
-  .innerJoin(sizes, eq(productVariants.sizeId, sizes.id))
-  .innerJoin(colors, eq(productVariants.colorId, colors.id))
-  .innerJoin(countrySizes, eq(sizes.id, countrySizes.size_id))
-  .where(eq(productVariants.productId, productId))
-  .orderBy(sizes.id);
+    .select({
+      colorId: colors.id,
+      colorName: colors.name,
+      colorCode: colors.color_code,
+      sizeId: sizes.id,
+      sizeName: sizes.name,
+      quantity: productVariants.quantity,
+      indiaSize: countrySizes.size_label, // filter or map for IND later
+      usSize: countrySizes.size_label, // same for US...
+      ukSize: countrySizes.size_label,
+      euSize: countrySizes.size_label,
+      countryName: countrySizes.country_name,
+      productVariantId: productVariants.id,
+    })
+    .from(productVariants)
+    .innerJoin(sizes, eq(productVariants.sizeId, sizes.id))
+    .innerJoin(colors, eq(productVariants.colorId, colors.id))
+    .innerJoin(countrySizes, eq(sizes.id, countrySizes.size_id))
+    .where(eq(productVariants.productId, productId))
+    .orderBy(sizes.id);
 
   // Group by color → colorId, name, colorCode, sizes[]
   type InventoryItem = {
@@ -474,9 +453,6 @@ export const getProductDetailsById = async (productId: number) => {
   ).map((g) => g.genderId.toString());
 
   // 3. Fetch discount if available
- 
-
-  
 
   // 4. Fetch inventory and group by color
   const variants = await db
@@ -538,19 +514,8 @@ type EditProductDetail = {
   isactive: boolean;
   category: number;
   subcategory: number;
-  images: string[];
+  images: { url: string; colorId: number }[];
   gender: string[];
-  //type: string;
-  discounts: {
-    type: string;
-    value: number;
-    quantity: number | undefined;
-  }[];
-  promocodes: {
-    type: string;
-    promocode: string;
-    value: number;
-  }[];
   inventory: {
     colorId: number;
     name: string;
@@ -586,12 +551,13 @@ export const getProductDetailsByIdEdit = async (
   if (!productData) return null;
 
   // 2. Fetch all images
-  const images = (
-    await db
-      .select({ url: productImages.url })
-      .from(productImages)
-      .where(eq(productImages.productId, productId))
-  ).map((img) => img.url);
+  const images = await db
+    .select({
+      url: productImages.url,
+      colorId: sql<number>`coalesce(${productImages.colorId}, 0)`.as("colorId"),
+    })
+    .from(productImages)
+    .where(eq(productImages.productId, productId));
 
   // 3. Fetch gender
   const genderIds = (
@@ -602,7 +568,6 @@ export const getProductDetailsByIdEdit = async (
   ).map((g) => g.genderId.toString());
 
   // 4. Fetch discounts
-  
 
   //const type= await db.select({type:sizes.type}).from(sizes).eq
 
@@ -653,10 +618,7 @@ export const getProductDetailsByIdEdit = async (
     subcategory: productData.subcategory ?? 0,
     images,
     gender: genderIds,
-    discounts: [],
-    promocodes: [],
     inventory: Array.from(colorMap.values()),
-    // type: type ?? "",
   };
 
   return productDetail;
@@ -835,11 +797,6 @@ export const getProductFilters = async (filters: ProductFilterParams) => {
   }
 
   // STEP 5: Discounts
- 
-
-
-
-
 
   // STEP 6: Final return
   const result = finalProducts.map((p) => ({
@@ -849,7 +806,7 @@ export const getProductFilters = async (filters: ProductFilterParams) => {
     avgRating: ratingMap.get(p.id)?.avgRating ?? 0,
     reviewCount: ratingMap.get(p.id)?.reviewCount ?? 0,
     imageUrl: imageMap.get(p.id) ?? null,
-    discounts:  [],
+    discounts: [],
   }));
 
   return {
