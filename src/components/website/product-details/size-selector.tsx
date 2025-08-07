@@ -1,149 +1,155 @@
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { sizeTypes } from "@/types/products";
-import { FlagIcon } from "lucide-react";
+import { ChevronDown, Flag } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner"; // or your preferred toast library
 
-type SizeSystem = "name" | "indiaSize" | "usSize" | "ukSize" | "euSize";
+type SizeSystem = "C" | "IND" | "US" | "UK" | "EU";
 
 interface SizeSystemOption {
   label: string;
   icon?: React.ReactNode;
 }
 
+type sizeType = {
+  sizeId: number;
+  pvId: number;
+  quantity: number;
+  label: string;
+  country: {
+    name: string;
+    label: string;
+  }[];
+};
+
 interface SizeSelectorProps {
-  sizes: sizeTypes[];
-  onSizeSelect?: (sizeId: number) => void;
+  sizes: sizeType[];
+  selectedSize: sizeType | null;
+  setSelectedSize: (size: sizeType | null) => void;
 }
 
 export const SizeSelector: React.FC<SizeSelectorProps> = ({
   sizes,
-  onSizeSelect,
+  selectedSize,
+  setSelectedSize,
 }) => {
-  const [selectedSize, setSelectedSize] = useState<string>("");
-  const [sizeSystem, setSizeSystem] = useState<SizeSystem>("name");
+  const [sizeSystem, setSizeSystem] = useState<SizeSystem>("C");
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
   const sizeSystems: Record<SizeSystem, SizeSystemOption> = {
-    name: { label: "C", icon: <FlagIcon className="h-4 w-4" /> },
-    indiaSize: { label: "IND", icon: <FlagIcon className="h-4 w-4" /> },
-    usSize: { label: "US", icon: <FlagIcon className="h-4 w-4" /> },
-    ukSize: { label: "UK", icon: <FlagIcon className="h-4 w-4" /> },
-    euSize: { label: "EU", icon: <FlagIcon className="h-4 w-4" /> },
+    C: { label: "Standard", icon: <span className="text-xs"></span> },
+    IND: { label: "India", icon: <Flag className="h-3 w-3" /> },
+    US: { label: "USA", icon: <Flag className="h-3 w-3" /> },
+    UK: { label: "UK", icon: <Flag className="h-3 w-3" /> },
+    EU: { label: "Europe", icon: <Flag className="h-3 w-3" /> },
+  };
+
+  const getSizeLabel = (size: (typeof sizes)[0]) => {
+    if (sizeSystem === "C") return size.label;
+    const country = size.country.find((c) => c.name === sizeSystem);
+    return country ? country.label : "";
   };
 
   const handleSizeSelect = (value: string) => {
-    const selected = sizes.find((size) => size[sizeSystem] === value);
+    const selected = sizes.find((size) => {
+      if (sizeSystem === "C") return size.label === value;
+      const country = size.country.find((c) => c.name === sizeSystem);
+      return country ? country.label === value : false;
+    });
 
     if (!selected) return;
 
-    if (selected.quantity <= 0) {
-      toast.error("This size is out of stock", {
-        description: "Please select another available size",
-      });
-      return;
-    }
-
-    setSelectedSize(value);
-    if (onSizeSelect) {
-      onSizeSelect(selected.sizeId);
-    }
+    setSelectedSize(selected);
   };
 
   return (
-    <div className="pt-1">
-      <div className="flex justify-between items-center mb-1">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
         <Label className="text-sm font-medium">Size</Label>
-      </div>
-      <div className="flex flex-row justify-between">
-        <RadioGroup
-          value={selectedSize}
-          onValueChange={handleSizeSelect}
-          className="space-y-2"
-        >
-          <div className="flex flex-wrap gap-2">
-            {sizes.map((size) => {
-              const isSelected = selectedSize === size[sizeSystem];
-              const isOutOfStock = size.quantity <= 0;
 
-              return (
-                <div key={size.sizeId}>
-                  <RadioGroupItem
-                    value={size[sizeSystem]}
-                    id={`size-${size.sizeId}`}
-                    className="peer sr-only"
-                  />
-                  <Label
-                    htmlFor={`size-${size.sizeId}`}
-                    className={`
-                    flex flex-col items-center justify-center w-8 h-8 text-sm border rounded-md cursor-pointer transition-colors relative
-                    ${
-                      isOutOfStock
-                        ? "opacity-70 cursor-not-allowed bg-gray-100 border-gray-200"
-                        : "hover:border-primary hover:bg-primary/5 border-muted"
-                    }
+        {/* Creative country/size system selector */}
+        <div className="relative">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-muted-foreground/20 hover:bg-muted/50 transition-colors"
+          >
+            <span className="flex items-center gap-1">
+              {sizeSystems[sizeSystem].icon}
+              <span className="hidden sm:inline">
+                {sizeSystems[sizeSystem].label}
+              </span>
+            </span>
+            <ChevronDown
+              className={`h-3 w-3 transition-transform ${
+                isOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {isOpen && (
+            <div className="absolute right-0 z-10 mt-1 w-32 origin-top-right rounded-md bg-popover shadow-lg ring-1 ring-muted-foreground/10 focus:outline-none">
+              <div className="p-1 space-y-1">
+                {Object.entries(sizeSystems).map(([key, { label, icon }]) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setSizeSystem(key as SizeSystem);
+                      setIsOpen(false);
+                      setSelectedSize(null);
+                    }}
+                    className={`w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-left ${
+                      sizeSystem === key
+                        ? "bg-accent text-accent-foreground"
+                        : "hover:bg-muted/50"
+                    }`}
+                  >
+                    {icon}
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <RadioGroup
+        value={selectedSize?.sizeId.toString()}
+        onValueChange={handleSizeSelect}
+        className="space-y-2"
+      >
+        <div className="flex flex-wrap gap-2">
+          {sizes.map((size) => {
+            const sizeLabel = getSizeLabel(size);
+            const isSelected = selectedSize?.label === sizeLabel;
+
+            if (!sizeLabel) return null;
+
+            return (
+              <div key={`${size.sizeId}-${sizeSystem}`}>
+                <RadioGroupItem
+                  value={sizeLabel}
+                  id={`size-${size.sizeId}-${sizeSystem}`}
+                  className="peer sr-only"
+                />
+                <Label
+                  htmlFor={`size-${size.sizeId}-${sizeSystem}`}
+                  className={`
+                    flex items-center justify-center w-12 h-12 text-sm font-medium border rounded-md cursor-pointer transition-all
+                    
                     ${
                       isSelected
-                        ? "border-primary bg-primary/10 text-foreground font-medium"
+                        ? "border-2 border-primary bg-primary/10 text-foreground shadow-sm"
                         : "bg-background"
                     }
                   `}
-                  >
-                    <span>{size[sizeSystem]}</span>
-                    {isOutOfStock && (
-                      <>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-full border-t border-red-500 rotate-12 transform"></div>
-                        </div>
-                        <span className="sr-only">Out of stock</span>
-                      </>
-                    )}
-                  </Label>
-                </div>
-              );
-            })}
-          </div>
-        </RadioGroup>
-        <div className="relative">
-          {/* Size system selector button */}
-          <div
-            className="flex items-center justify-center w-8 h-8 text-sm border border-blue-500 rounded-md cursor-pointer hover:border-primary/50 bg-primary/50"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            {sizeSystems[sizeSystem].label}
-          </div>
-
-          {/* Size system dropdown */}
-          <div
-            className={`absolute right-0 z-10 bottom-full mb-1 flex flex-col-reverse items-center gap-1 transition-all duration-300 ease-in-out ${
-              isOpen
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-2 pointer-events-none"
-            }`}
-          >
-            {(
-              Object.entries(sizeSystems) as [SizeSystem, SizeSystemOption][]
-            ).map(([key, { label }]) => (
-              <div
-                key={key}
-                className={`flex items-center justify-center w-10 h-10 text-sm border rounded-md cursor-pointer bg-background ${
-                  sizeSystem === key
-                    ? "border-primary bg-primary/10"
-                    : "hover:border-primary/50 hover:bg-primary/10"
-                }`}
-                onClick={() => {
-                  setSizeSystem(key);
-                  setIsOpen(false);
-                  setSelectedSize("");
-                }}
-              >
-                {label}
+                >
+                  <span className="relative">{sizeLabel}</span>
+                </Label>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      </div>
+      </RadioGroup>
     </div>
   );
 };

@@ -9,13 +9,20 @@ import {
   subcategories,
 } from "@/db/schema/category";
 import {
+  discountCategories,
+  discountProducts,
+  discounts,
+  discountSubcategories,
+} from "@/db/schema/offers";
+import {
   productGenders,
   productImages,
   productReviews,
   products,
   productVariants,
 } from "@/db/schema/products";
-import { and, avg, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { DiscountType } from "@/types/products";
+import { and, asc, avg, eq, gte, ilike, inArray, lte, sql } from "drizzle-orm";
 
 export async function getSizes() {
   return await db.select().from(sizes);
@@ -81,6 +88,8 @@ export const createOrUpdateProduct = async (input: CreateProductInput) => {
         isActive: isactive,
         categoryId: category,
         subcategoryId: subcategory,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning();
 
@@ -96,6 +105,7 @@ export const createOrUpdateProduct = async (input: CreateProductInput) => {
         isActive: isactive,
         categoryId: category,
         subcategoryId: subcategory,
+        updatedAt: new Date(),
       })
       .where(eq(products.id, productId));
 
@@ -126,7 +136,7 @@ export const createOrUpdateProduct = async (input: CreateProductInput) => {
       images.map((img) => ({
         productId: productId,
         url: img.url,
-        colorId: img.colorId,
+        colorId: img.colorId == 0 ? null : img.colorId,
       }))
     );
   }
@@ -198,12 +208,14 @@ export const getAllProducts = async () => {
 };
 
 export const getTopProducts = async () => {
-  // Step 1: Get top 10 active products
+  // Step 1: Get top 10 products with subcategory and category
   const topProducts = await db
     .select({
       id: products.id,
       name: products.name,
       price: products.price,
+      subcategoryId: products.subcategoryId,
+      categoryId: products.categoryId,
     })
     .from(products)
     .where(eq(products.isActive, true))
@@ -212,7 +224,7 @@ export const getTopProducts = async () => {
 
   const productIds = topProducts.map((p) => p.id);
 
-  // Step 2: Get all images for those products
+  // Step 2: Get images for those products
   const images = await db
     .select({
       productId: productImages.productId,
@@ -221,7 +233,6 @@ export const getTopProducts = async () => {
     .from(productImages)
     .where(inArray(productImages.productId, productIds));
 
-  // Group images by productId
   const imageMap = new Map<number, string[]>();
   for (const img of images) {
     const list = imageMap.get(img.productId) ?? [];
@@ -229,20 +240,151 @@ export const getTopProducts = async () => {
     imageMap.set(img.productId, list);
   }
 
-  // Step 3: Get all discounts for those products
+  // Step 3: Get all discounts and their mappings
+  const discountResults = await db
+    .select({
+      discountId: discounts.id,
+      name: discounts.name,
+      type: discounts.type,
+      value: discounts.value,
+      minQuantity: discounts.minQuantity,
+      applyTo: discounts.appliedTo,
+      categoryId: discountCategories.categoryId,
+      subcategoryId: discountSubcategories.subcategoryId,
+      productId: discountProducts.productId,
+    })
+    .from(discounts)
+    .leftJoin(
+      discountCategories,
+      eq(discounts.id, discountCategories.discountId)
+    )
+    .leftJoin(
+      discountSubcategories,
+      eq(discounts.id, discountSubcategories.discountId)
+    )
+    .leftJoin(discountProducts, eq(discounts.id, discountProducts.discountId));
 
-  // Group discounts by productId
+  interface DiscountResult {
+    discountId: number;
+    name: string;
+    type: string;
+    value: number;
+    minQuantity: number;
+    applyTo: string;
+    categoryId?: number;
+    subcategoryId?: number;
+    productId?: number;
+  }
 
-  // Step 4: Merge and return final structure
-  const merged = topProducts.map((product) => ({
-    id: product.id,
-    name: product.name,
-    price: product.price,
-    images: imageMap.get(product.id) ?? [],
-    discount: [],
+  interface DiscountMapValue {
+    discountId: number;
+    name: string;
+    type: string;
+    value: number;
+    minQuantity: number;
+    applyTo: string;
+    categoryIds: Set<number>;
+    subcategoryIds: Set<number>;
+    productIds: Set<number>;
+  }
+
+  const discountMap = new Map<number, DiscountMapValue>();
+
+  for (const row of discountResults as DiscountResult[]) {
+    const {
+      discountId,
+      name,
+      type,
+      value,
+      minQuantity,
+      applyTo,
+      categoryId,
+      subcategoryId,
+      productId,
+    } = row;
+
+    if (!discountMap.has(discountId)) {
+      discountMap.set(discountId, {
+        discountId,
+        name,
+        type,
+        value,
+        minQuantity,
+        applyTo,
+        categoryIds: new Set<number>(),
+        subcategoryIds: new Set<number>(),
+        productIds: new Set<number>(),
+      });
+    }
+
+    const d = discountMap.get(discountId)!; // Non-null assertion since we just set it
+
+    if (categoryId) d.categoryIds.add(categoryId);
+    if (subcategoryId) d.subcategoryIds.add(subcategoryId);
+    if (productId) d.productIds.add(productId);
+  }
+
+  const allDiscounts = Array.from(discountMap.values()).map((d) => ({
+    ...d,
+    categoryIds: Array.from(d.categoryIds),
+    subcategoryIds: Array.from(d.subcategoryIds),
+    productIds: Array.from(d.productIds),
   }));
 
+  // Step 4: Match best discount for each product by priority
+  const merged = topProducts.map((product) => {
+    const { id, subcategoryId, categoryId } = product;
+    let matchedDiscount: DiscountType | null | undefined = null;
+
+    // 1. Match by productId
+    matchedDiscount =
+      allDiscounts.find((d) => d.productIds.includes(id)) ||
+      // 2. Match by subcategoryId
+      (subcategoryId &&
+        allDiscounts.find((d) => d.subcategoryIds.includes(subcategoryId))) ||
+      // 3. Match by categoryId
+      (categoryId &&
+        allDiscounts.find((d) => d.categoryIds.includes(categoryId))) ||
+      // 4. Match all
+      allDiscounts.find((d) => d.applyTo === "all");
+
+    return {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      images: imageMap.get(product.id) ?? [],
+      discount: matchedDiscount || null,
+    };
+  });
+
   return merged;
+};
+
+export type sizesType = {
+  sizeId: number;
+  pvId: number;
+  quantity: number;
+  label: string;
+  country: { name: string; label: string }[];
+};
+
+export type Inventory = {
+  colorId: number;
+  name: string;
+  colorCode: string;
+  sizes: sizesType[];
+};
+
+export type Discount = {
+  discountId: number;
+  name: string;
+  type: string;
+  value: number;
+  minQuantity: number;
+  applyTo: string;
+  categoryIds: number[];
+  subcategoryIds: number[];
+  productIds: number[];
 };
 
 export type ProductDetail = {
@@ -254,26 +396,8 @@ export type ProductDetail = {
   category: string | null;
   subcategory: string | null;
   images: { url: string; colorId: number | null }[];
-  discounts: {
-    type: string;
-    value: number;
-    minQuantity: number | null;
-  }[];
-  inventory: {
-    colorId: number;
-    name: string;
-    colorCode: string;
-    sizes: {
-      sizeId: number;
-      name: string;
-      quantity: number;
-      indiaSize: string;
-      usSize: string;
-      ukSize: string;
-      euSize: string;
-      pvId: number;
-    }[];
-  }[];
+  discounts: Discount[];
+  inventory: Inventory[];
   rating: number;
   reviews: {
     id: number;
@@ -301,6 +425,8 @@ export const getProductById = async (
       isActive: products.isActive,
       category: categories.name,
       subcategory: subcategories.name,
+      categoryId: products.categoryId,
+      subcategoryId: products.subcategoryId,
     })
     .from(products)
     .leftJoin(categories, eq(products.categoryId, categories.id))
@@ -316,9 +442,7 @@ export const getProductById = async (
     .from(productImages)
     .where(eq(productImages.productId, productId));
 
-  // 3. Fetch discount if available
-
-  // 4. Fetch inventory and group by color
+  // 3. Fetch inventory
   const variants = await db
     .select({
       colorId: colors.id,
@@ -327,11 +451,9 @@ export const getProductById = async (
       sizeId: sizes.id,
       sizeName: sizes.name,
       quantity: productVariants.quantity,
-      indiaSize: countrySizes.size_label, // filter or map for IND later
-      usSize: countrySizes.size_label, // same for US...
-      ukSize: countrySizes.size_label,
-      euSize: countrySizes.size_label,
+      countryId: countrySizes.id,
       countryName: countrySizes.country_name,
+      countryLabel: countrySizes.size_label,
       productVariantId: productVariants.id,
     })
     .from(productVariants)
@@ -341,24 +463,7 @@ export const getProductById = async (
     .where(eq(productVariants.productId, productId))
     .orderBy(sizes.id);
 
-  // Group by color → colorId, name, colorCode, sizes[]
-  type InventoryItem = {
-    colorId: number;
-    name: string;
-    colorCode: string;
-    sizes: {
-      sizeId: number;
-      name: string;
-      quantity: number;
-      indiaSize: string;
-      usSize: string;
-      ukSize: string;
-      euSize: string;
-      pvId: number;
-    }[];
-  };
-
-  const colorMap = new Map<number, InventoryItem>();
+  const colorMap = new Map<number, Inventory>();
 
   for (const v of variants) {
     if (!colorMap.has(v.colorId)) {
@@ -369,19 +474,30 @@ export const getProductById = async (
         sizes: [],
       });
     }
-    colorMap.get(v.colorId)!.sizes.push({
-      sizeId: v.sizeId,
-      name: v.sizeName,
-      quantity: v.quantity,
-      indiaSize: v.indiaSize ?? "-",
-      usSize: v.usSize ?? "-",
-      ukSize: v.ukSize ?? "-",
-      euSize: v.euSize ?? "-",
-      pvId: v.productVariantId,
-    });
+
+    const colorEntry = colorMap.get(v.colorId)!;
+    let sizeEntry = colorEntry.sizes.find((s) => s.sizeId === v.sizeId);
+
+    if (!sizeEntry) {
+      sizeEntry = {
+        sizeId: v.sizeId,
+        pvId: v.productVariantId,
+        quantity: v.quantity,
+        label: v.sizeName,
+        country: [],
+      };
+      colorEntry.sizes.push(sizeEntry);
+    }
+
+    if (v.countryName && v.countryLabel) {
+      sizeEntry.country.push({
+        name: v.countryName,
+        label: v.countryLabel,
+      });
+    }
   }
 
-  // 5. Average rating
+  // 4. Fetch average rating
   const ratingRes = await db
     .select({ rating: avg(productReviews.rating).as("rating") })
     .from(productReviews)
@@ -390,7 +506,7 @@ export const getProductById = async (
 
   const averageRating = parseFloat(Number(ratingRes).toFixed(1)) || 0;
 
-  // 6. Reviews list
+  // 5. Fetch reviews
   const reviews = await db
     .select({
       id: productReviews.id,
@@ -398,8 +514,8 @@ export const getProductById = async (
       rating: productReviews.rating,
       comment: productReviews.comment,
       createdAt: productReviews.createdAt,
-      userName: user.name, // Optional
-      userEmail: user.email, // Optional
+      userName: user.name,
+      userEmail: user.email,
       userImage: user.image,
     })
     .from(productReviews)
@@ -407,10 +523,122 @@ export const getProductById = async (
     .leftJoin(user, eq(productReviews.userId, user.id))
     .orderBy(productReviews.createdAt);
 
+  // 6. Fetch all discounts
+  const discountResults = await db
+    .select({
+      discountId: discounts.id,
+      name: discounts.name,
+      type: discounts.type,
+      value: discounts.value,
+      minQuantity: discounts.minQuantity,
+      applyTo: discounts.appliedTo,
+      categoryId: discountCategories.categoryId,
+      subcategoryId: discountSubcategories.subcategoryId,
+      productId: discountProducts.productId,
+    })
+    .from(discounts)
+    .leftJoin(
+      discountCategories,
+      eq(discounts.id, discountCategories.discountId)
+    )
+    .leftJoin(
+      discountSubcategories,
+      eq(discounts.id, discountSubcategories.discountId)
+    )
+    .leftJoin(discountProducts, eq(discounts.id, discountProducts.discountId));
+
+  interface DiscountResult {
+    discountId: number;
+    name: string;
+    type: string;
+    value: number;
+    minQuantity: number;
+    applyTo: string;
+    categoryId?: number;
+    subcategoryId?: number;
+    productId?: number;
+  }
+
+  interface DiscountMapValue {
+    discountId: number;
+    name: string;
+    type: string;
+    value: number;
+    minQuantity: number;
+    applyTo: string;
+    categoryIds: Set<number>;
+    subcategoryIds: Set<number>;
+    productIds: Set<number>;
+  }
+
+  const discountMap = new Map<number, DiscountMapValue>();
+
+  for (const row of discountResults as DiscountResult[]) {
+    const {
+      discountId,
+      name,
+      type,
+      value,
+      minQuantity,
+      applyTo,
+      categoryId,
+      subcategoryId,
+      productId,
+    } = row;
+
+    if (!discountMap.has(discountId)) {
+      discountMap.set(discountId, {
+        discountId,
+        name,
+        type,
+        value,
+        minQuantity,
+        applyTo,
+        categoryIds: new Set<number>(),
+        subcategoryIds: new Set<number>(),
+        productIds: new Set<number>(),
+      });
+    }
+
+    const d = discountMap.get(discountId)!; // Non-null assertion since we just set it
+
+    if (categoryId) d.categoryIds.add(categoryId);
+    if (subcategoryId) d.subcategoryIds.add(subcategoryId);
+    if (productId) d.productIds.add(productId);
+  }
+
+  const allDiscounts = Array.from(discountMap.values()).map((d) => ({
+    ...d,
+    categoryIds: Array.from(d.categoryIds),
+    subcategoryIds: Array.from(d.subcategoryIds),
+    productIds: Array.from(d.productIds),
+  }));
+
+  // 7. Match discount for this product
+  const { id, categoryId, subcategoryId } = productData;
+
+  const matchedDiscounts = allDiscounts.filter((d) => {
+    const matchesProduct = d.productIds?.includes(id);
+    const matchesSubcategory =
+      subcategoryId && d.subcategoryIds?.includes(subcategoryId);
+    const matchesCategory = categoryId && d.categoryIds?.includes(categoryId);
+    const appliesToAll = d.applyTo === "all";
+
+    return (
+      matchesProduct || matchesSubcategory || matchesCategory || appliesToAll
+    );
+  });
+
   return {
-    ...productData,
+    id: productData.id,
+    name: productData.name,
+    description: productData.description,
+    price: productData.price,
+    isActive: productData.isActive,
+    category: productData.category,
+    subcategory: productData.subcategory,
     images,
-    discounts: [],
+    discounts: matchedDiscounts,
     inventory: Array.from(colorMap.values()),
     rating: averageRating,
     reviews,
@@ -566,10 +794,6 @@ export const getProductDetailsByIdEdit = async (
       .from(productGenders)
       .where(eq(productGenders.productId, productId))
   ).map((g) => g.genderId.toString());
-
-  // 4. Fetch discounts
-
-  //const type= await db.select({type:sizes.type}).from(sizes).eq
 
   // 6. Fetch inventory with color/size
   const variants = await db
@@ -813,4 +1037,28 @@ export const getProductFilters = async (filters: ProductFilterParams) => {
     totalRecords,
     products: result,
   };
+};
+
+export const getAllProductsBySearch = async (searchTerm?: string) => {
+  const conditions = [eq(products.isActive, true)];
+
+  if (searchTerm) {
+    conditions.push(ilike(products.name, `%${searchTerm}%`));
+  }
+
+  const result = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      price: products.price,
+      category: categories.name,
+      subcategory: subcategories.name,
+    })
+    .from(products)
+    .leftJoin(categories, eq(products.categoryId, categories.id))
+    .leftJoin(subcategories, eq(products.subcategoryId, subcategories.id))
+    .where(and(...conditions))
+    .orderBy(asc(products.name));
+
+  return result;
 };

@@ -86,7 +86,7 @@ export function SearchBox<T extends OptionType>({
           ) : (
             <CommandEmpty>No results found.</CommandEmpty>
           )}
-          <CommandList>
+          <CommandList className="w-full">
             {options.map((opt) => (
               <CommandItem
                 key={opt.id}

@@ -37,6 +37,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { CategorySearch } from "./categories-search";
+import { ProductsSearchBox } from "./products-search";
 import { SubcategorySearchBox } from "./subcategory-search";
 
 const formSchema = z.object({
@@ -260,7 +261,7 @@ export function NewDiscountModal({
                         </FormItem>
                         <FormItem className="flex items-center space-x-3 space-y-0">
                           <FormControl>
-                            <RadioGroupItem value="category" />
+                            <RadioGroupItem value="categories" />
                           </FormControl>
                           <FormLabel className="font-normal flex items-center gap-2">
                             <ListTree className="h-4 w-4" />
@@ -269,7 +270,7 @@ export function NewDiscountModal({
                         </FormItem>
                         <FormItem className="flex items-center space-x-3 space-y-0">
                           <FormControl>
-                            <RadioGroupItem value="subcategory" />
+                            <RadioGroupItem value="subcategories" />
                           </FormControl>
                           <FormLabel className="font-normal flex items-center gap-2">
                             <Tags className="h-4 w-4" />
@@ -278,7 +279,7 @@ export function NewDiscountModal({
                         </FormItem>
                         <FormItem className="flex items-center space-x-3 space-y-0">
                           <FormControl>
-                            <RadioGroupItem value="product" />
+                            <RadioGroupItem value="products" />
                           </FormControl>
                           <FormLabel className="font-normal flex items-center gap-2">
                             <Box className="h-4 w-4" />
@@ -314,9 +315,25 @@ export function NewDiscountModal({
                     name="subcategoryIds"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Categories</FormLabel>
+                        <FormLabel>Subcategories</FormLabel>
                         <FormControl>
                           <SubcategorySearchBox field={field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {appliedTo === "products" && (
+                  <FormField
+                    control={form.control}
+                    name="productIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Products</FormLabel>
+                        <FormControl>
+                          <ProductsSearchBox field={field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

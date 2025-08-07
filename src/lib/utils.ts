@@ -10,21 +10,85 @@ export const getActiveDiscount = (
   discounts: DiscountType[],
   quantity: number
 ): DiscountType | null => {
-  // Filter quantity-based discounts that are valid for the current quantity
-  const quantityDiscounts = discounts
-    .filter(
-      (d) =>
-        d.type === "quantity" &&
-        typeof d.minQuantity === "number" &&
-        quantity >= d.minQuantity
-    )
-    .sort((a, b) => (b.minQuantity ?? 0) - (a.minQuantity ?? 0)); // highest applicable minQuantity first
+  // Filter by type and valid minQuantity
+  const validDiscounts = discounts.filter(
+    (d) => d.type === d.type && (d.minQuantity ?? 1) <= quantity
+  );
 
-  // Return the most suitable quantity discount if available
-  if (quantityDiscounts.length > 0) return quantityDiscounts[0];
+  if (validDiscounts.length === 0) return null;
 
-  // Fallback to direct discount if no quantity discounts apply
-  return discounts.find((d) => d.type === "direct") ?? null;
+  // Return the highest value discount
+  return validDiscounts.reduce((best, current) => {
+    return (current.value ?? 0) > (best.value ?? 0) ? current : best;
+  });
+};
+
+export const getBestDiscount = (
+  discounts: DiscountType[],
+  price: number,
+  quantity: number
+): DiscountType | null => {
+  if (!discounts || discounts.length === 0) return null;
+
+  // Filter valid discounts based on quantity
+  const validDiscounts = discounts.filter(
+    (d) => (d.minQuantity ?? 1) <= quantity
+  );
+
+  if (validDiscounts.length === 0) return null;
+
+  // Find the discount that gives the lowest discounted price
+  let bestDiscount: DiscountType | null = null;
+  let lowestPrice = price;
+
+  for (const discount of validDiscounts) {
+    let discountedPrice = price;
+
+    if (discount.type === "percentage") {
+      discountedPrice = price - (price * discount.value) / 100;
+    } else if (discount.type === "amount") {
+      discountedPrice = price - discount.value;
+    }
+
+    if (discountedPrice < lowestPrice) {
+      lowestPrice = discountedPrice;
+      bestDiscount = discount;
+    }
+  }
+
+  return bestDiscount;
+};
+
+export const getDiscountValues = (
+  discount: DiscountType | null,
+  price: number,
+  quantity: number
+) => {
+  if (!discount || quantity < discount.minQuantity) {
+    return {
+      discountedText: "",
+      discountedPrice: price,
+    };
+  }
+
+  let discountedPrice = price;
+  let text = "";
+
+  if (discount.type === "percentage") {
+    const discountAmount = (price * discount.value) / 100;
+    discountedPrice = price - discountAmount;
+    text = `${discount.value}% off - Buy ${discount.minQuantity}+`;
+  } else if (discount.type === "amount") {
+    discountedPrice = (price * quantity - discount.value) / quantity;
+    text = `₹${discount.value} off - Buy ${discount.minQuantity}+`;
+  }
+
+  //discountedPrice = Math.round(discountedPrice * 100) / 100;
+
+  return {
+    discountedText: text,
+    discountedPrice,
+  };
 };
 
 export const getDiscounts = (
@@ -66,5 +130,55 @@ export const getDiscounts = (
   return {
     discountedPrice: Math.max(discountedPrice, 0),
     discountedText,
+  };
+};
+
+export const getBestDiscountValue = (
+  discounts: DiscountType[],
+  price: number,
+  quantity: number
+): {
+  bestDiscount: DiscountType | null;
+  discountedPrice: number;
+  discountedText: string;
+} => {
+  if (!discounts || discounts.length === 0) {
+    return {
+      bestDiscount: null,
+      discountedPrice: price,
+      discountedText: "",
+    };
+  }
+
+  let bestDiscount: DiscountType | null = null;
+  let lowestPrice = price;
+  let bestText = "";
+
+  for (const discount of discounts) {
+    if ((discount.minQuantity ?? 1) > quantity) continue;
+
+    let discountedPrice = price;
+    let text = "";
+
+    if (discount.type === "percentage") {
+      const discountAmount = (price * discount.value) / 100;
+      discountedPrice = price - discountAmount;
+      text = `${discount.value}% off - Buy ${discount.minQuantity}+`;
+    } else if (discount.type === "amount") {
+      discountedPrice = (price * quantity - discount.value) / quantity;
+      text = `₹${discount.value} off - Buy ${discount.minQuantity}+`;
+    }
+
+    if (discountedPrice < lowestPrice) {
+      lowestPrice = discountedPrice;
+      bestDiscount = discount;
+      bestText = text;
+    }
+  }
+
+  return {
+    bestDiscount,
+    discountedPrice: Math.max(Math.round(lowestPrice * 100) / 100, 0),
+    discountedText: bestText,
   };
 };

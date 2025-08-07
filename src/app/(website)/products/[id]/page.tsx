@@ -6,7 +6,7 @@ import { ImageGallery } from "@/components/website/product-details/images";
 import { PriceCalculation } from "@/components/website/product-details/price-calculation";
 import { ProductDetailSkeleton } from "@/components/website/product-details/product-details-skeleton";
 import { ProductSelection } from "@/components/website/product-details/product-selection";
-import { getActiveDiscount } from "@/lib/utils";
+import { getBestDiscount, getDiscountValues } from "@/lib/utils";
 import { getProductById } from "@/server/products";
 import { DiscountType } from "@/types/products";
 import { useQuery } from "@tanstack/react-query";
@@ -35,7 +35,9 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (product && product.discounts)
-      setActiveDiscount(getActiveDiscount(product?.discounts, quantity));
+      setActiveDiscount(
+        getBestDiscount(product?.discounts, product.price, quantity)
+      );
   }, [quantity, product, product?.discounts]);
 
   if (isLoading) {
@@ -46,9 +48,11 @@ export default function ProductDetailPage() {
     return <div>Product not found</div>;
   }
 
-  const discountPercentage = activeDiscount?.value ?? 0;
-  const discountedPrice =
-    product.price - (product.price * discountPercentage) / 100;
+  const { discountedText, discountedPrice } = getDiscountValues(
+    activeDiscount,
+    product.price,
+    quantity
+  );
 
   return (
     <div className="container px-4 py-6 sm:px-6 lg:px-8">
@@ -78,14 +82,15 @@ export default function ProductDetailPage() {
         {/* Product Images - Column 1 */}
         <ImageGallery
           images={product.images}
-          discountPercentage={discountPercentage}
-          colorId={selectedColorId}
+          discountedText={discountedText}
+          selectedColorId={selectedColorId}
+          setSelectedColorId={setSelectedColorId}
         />
 
         {/* Product Details - Column 2 */}
         <ProductSelection
           product={product}
-          discountedPercentage={discountPercentage}
+          discountedText={discountedText}
           discountedPrice={discountedPrice}
           quantity={quantity}
           setQuantity={setQuantity}

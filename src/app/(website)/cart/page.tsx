@@ -7,7 +7,12 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FreeShippingProgress } from "@/components/website/cart/free-shipping";
 import { useSession } from "@/lib/auth-client";
-import { FREE_SHIPPING_LIMIT, SHIPPING_CHARGES } from "@/lib/contants";
+import {
+  FREE_SHIPPING_LIMIT,
+  SHIPPING_CHARGES,
+  TAX_PERCENTAGE,
+} from "@/lib/contants";
+import { getBestDiscountValue } from "@/lib/utils";
 import {
   CartItemDetail,
   deleteCartItem,
@@ -46,7 +51,9 @@ export default function CartPage() {
         ["cartitems", user?.id],
         (old: CartItemDetail[] = []) =>
           old.map((item: CartItemDetail) =>
-            item.pvId === productVariantId ? { ...item, quantity: newQuantity } : item
+            item.pvId === productVariantId
+              ? { ...item, quantity: newQuantity }
+              : item
           )
       );
       return { previousItems };
@@ -106,20 +113,28 @@ export default function CartPage() {
   });
 
   const totalItems = items?.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal =
-    items?.reduce(
-      (sum, item) => sum + item.discountedPrice * item.quantity,
-      0
-    ) ?? 0;
-  const originalTotal =
-    items?.reduce((sum, item) => sum + item.price * item.quantity, 0) ?? 0;
+  let subtotal = 0;
+  let originalTotal = 0;
 
-  // Calculate total savings
-  const totalSavings = originalTotal - subtotal;
-  console.log("free", FREE_SHIPPING_LIMIT, subtotal);
+  if (items) {
+    for (const item of items) {
+      const { discountedPrice } = getBestDiscountValue(
+        item.discounts,
+        item.price,
+        item.quantity
+      );
+      subtotal += discountedPrice * item.quantity;
+      originalTotal += item.price * item.quantity;
+    }
+  }
+
+  const round2 = (value: number) => parseFloat(value.toFixed(2));
+
+  const totalSavings = round2(originalTotal - subtotal);
   const shipping = subtotal >= FREE_SHIPPING_LIMIT ? 0 : SHIPPING_CHARGES;
-  const total = subtotal + shipping;
-  console.log("--shiping", shipping);
+  const totalWithShipping = round2(subtotal + shipping);
+  const totaltax = (TAX_PERCENTAGE * totalWithShipping) / 100;
+  const total = round2(totalWithShipping + totaltax);
 
   const handleQuantity = (
     productId: number,
@@ -253,103 +268,111 @@ export default function CartPage() {
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Your Items ({totalItems})</h2>
             <AnimatePresence>
-              {items?.map((item) => (
-                <motion.div
-                  key={item.pvId}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -100 }}
-                  transition={{ duration: 0.3 }}
-                  layout
-                >
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex space-x-4">
-                        <div className="relative w-24 h-24 flex-shrink-0">
-                          <Image
-                            src={item.imageUrl || "/placeholder.svg"}
-                            alt={item.name}
-                            fill
-                            className="object-cover rounded-lg"
-                          />
-                        </div>
-
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg mb-1">
-                            {item.name}
-                          </h3>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Size: {item.sizeName} | Color: {item.colorName}
-                          </p>
-
-                          <div className="flex items-center space-x-2 mb-4">
-                            <span className="font-bold text-lg">
-                              ₹{item.discountedPrice}
-                            </span>
-                            {item.price > item.discountedPrice && (
-                              <span className="text-sm text-muted-foreground line-through">
-                                ₹{item.price}
-                              </span>
-                            )}
-                            <Badge className="bg-red-500">
-                              {item.discountedPercentage}% OFF
-                            </Badge>
+              {items?.map((item) => {
+                const { discountedPrice, discountedText } =
+                  getBestDiscountValue(
+                    item.discounts,
+                    item.price,
+                    item.quantity
+                  );
+                return (
+                  <motion.div
+                    key={item.pvId}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -100 }}
+                    transition={{ duration: 0.3 }}
+                    layout
+                  >
+                    <Card>
+                      <CardContent className="p-6">
+                        <div className="flex space-x-4">
+                          <div className="relative w-24 h-24 flex-shrink-0">
+                            <Image
+                              src={item.imageUrl || "/placeholder.svg"}
+                              alt={item.name}
+                              fill
+                              className="object-cover rounded-lg"
+                            />
                           </div>
 
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() =>
-                                  handleQuantity(
-                                    item.productId,
-                                    item.pvId,
-                                    item.quantity - 1
-                                  )
-                                }
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                              <span className="w-12 text-center font-semibold">
-                                {item.quantity}
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg mb-1">
+                              {item.name}
+                            </h3>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              Size: {item.sizeName} | Color: {item.colorName}
+                            </p>
+
+                            <div className="flex items-center space-x-2 mb-4">
+                              <span className="font-bold text-lg">
+                                ₹{discountedPrice}
                               </span>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() =>
-                                  handleQuantity(
-                                    item.productId,
-                                    item.pvId,
-                                    item.quantity + 1
-                                  )
-                                }
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
+                              {item.price > discountedPrice && (
+                                <span className="text-sm text-muted-foreground line-through">
+                                  ₹{item.price}
+                                </span>
+                              )}
+                              <Badge className="bg-red-500">
+                                {discountedText}
+                              </Badge>
                             </div>
 
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() =>
-                                deleteItemMutation.mutate({
-                                  userId: user?.id as string,
-                                  productId: item.productId,
-                                  productVariantId: item.pvId,
-                                })
-                              }
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() =>
+                                    handleQuantity(
+                                      item.productId,
+                                      item.pvId,
+                                      item.quantity - 1
+                                    )
+                                  }
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                                <span className="w-12 text-center font-semibold">
+                                  {item.quantity}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() =>
+                                    handleQuantity(
+                                      item.productId,
+                                      item.pvId,
+                                      item.quantity + 1
+                                    )
+                                  }
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </div>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  deleteItemMutation.mutate({
+                                    userId: user?.id as string,
+                                    productId: item.productId,
+                                    productVariantId: item.pvId,
+                                  })
+                                }
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
         </div>
@@ -398,6 +421,10 @@ export default function CartPage() {
                     >
                       {shipping === 0 ? "FREE Delivery" : `₹${shipping}`}
                     </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tax ({TAX_PERCENTAGE}%)</span>
+                    <span>{totaltax}</span>
                   </div>
                 </div>
 

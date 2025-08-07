@@ -3,19 +3,23 @@
 import { db } from "@/db/drizzle";
 import { user } from "@/db/schema/auth";
 import { cartItems, orderItems, orders } from "@/db/schema/cart";
-import { colors, sizes } from "@/db/schema/category";
-
+import { categories, colors, sizes, subcategories } from "@/db/schema/category";
 import {
-  productImages,
-  products,
-  productVariants,
-} from "@/db/schema/products";
+  discountCategories,
+  discountProducts,
+  discounts,
+  discountSubcategories,
+} from "@/db/schema/offers";
+
+import { productImages, products, productVariants } from "@/db/schema/products";
 import { userAddresses } from "@/db/schema/user";
 import {
   FREE_SHIPPING_LIMIT,
   SHIPPING_CHARGES,
   TAX_PERCENTAGE,
 } from "@/lib/contants";
+import { getBestDiscount, getBestDiscountValue } from "@/lib/utils";
+import { DiscountType } from "@/types/products";
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 
@@ -31,8 +35,7 @@ export type CartItemDetail = {
   colorName: string;
   sizeId: number;
   sizeName: string;
-  discountedPercentage: number;
-  discountedPrice: number;
+  discounts: DiscountType[];
 };
 
 export const getCartItems = async (
@@ -51,6 +54,8 @@ export const getCartItems = async (
       colorCode: colors.color_code,
       sizeId: sizes.id,
       sizeName: sizes.name,
+      categoryId: products.categoryId,
+      subcategoryId: products.subcategoryId,
     })
     .from(cartItems)
     .leftJoin(products, eq(cartItems.productId, products.id))
@@ -58,6 +63,8 @@ export const getCartItems = async (
       productVariants,
       eq(cartItems.productVariantId, productVariants.id)
     )
+    .leftJoin(categories, eq(products.categoryId, categories.id))
+    .leftJoin(subcategories, eq(products.subcategoryId, subcategories.id))
     .leftJoin(colors, eq(productVariants.colorId, colors.id))
     .leftJoin(sizes, eq(productVariants.sizeId, sizes.id))
     .where(eq(cartItems.userId, userId));
@@ -93,22 +100,113 @@ export const getCartItems = async (
     imageMap.get(img.productId)!.push(img);
   }
 
+  // 6. Fetch all discounts
+  const discountResults = await db
+    .select({
+      discountId: discounts.id,
+      name: discounts.name,
+      type: discounts.type,
+      value: discounts.value,
+      minQuantity: discounts.minQuantity,
+      applyTo: discounts.appliedTo,
+      categoryId: discountCategories.categoryId,
+      subcategoryId: discountSubcategories.subcategoryId,
+      productId: discountProducts.productId,
+    })
+    .from(discounts)
+    .leftJoin(
+      discountCategories,
+      eq(discounts.id, discountCategories.discountId)
+    )
+    .leftJoin(
+      discountSubcategories,
+      eq(discounts.id, discountSubcategories.discountId)
+    )
+    .leftJoin(discountProducts, eq(discounts.id, discountProducts.discountId));
 
+  interface DiscountResult {
+    discountId: number;
+    name: string;
+    type: string;
+    value: number;
+    minQuantity: number;
+    applyTo: string;
+    categoryId?: number;
+    subcategoryId?: number;
+    productId?: number;
+  }
 
+  interface DiscountMapValue {
+    discountId: number;
+    name: string;
+    type: string;
+    value: number;
+    minQuantity: number;
+    applyTo: string;
+    categoryIds: Set<number>;
+    subcategoryIds: Set<number>;
+    productIds: Set<number>;
+  }
 
+  const discountMap = new Map<number, DiscountMapValue>();
+
+  for (const row of discountResults as DiscountResult[]) {
+    const {
+      discountId,
+      name,
+      type,
+      value,
+      minQuantity,
+      applyTo,
+      categoryId,
+      subcategoryId,
+      productId,
+    } = row;
+
+    if (!discountMap.has(discountId)) {
+      discountMap.set(discountId, {
+        discountId,
+        name,
+        type,
+        value,
+        minQuantity,
+        applyTo,
+        categoryIds: new Set<number>(),
+        subcategoryIds: new Set<number>(),
+        productIds: new Set<number>(),
+      });
+    }
+
+    const d = discountMap.get(discountId)!; // Non-null assertion since we just set it
+
+    if (categoryId) d.categoryIds.add(categoryId);
+    if (subcategoryId) d.subcategoryIds.add(subcategoryId);
+    if (productId) d.productIds.add(productId);
+  }
+
+  const allDiscounts = Array.from(discountMap.values()).map((d) => ({
+    ...d,
+    categoryIds: Array.from(d.categoryIds),
+    subcategoryIds: Array.from(d.subcategoryIds),
+    productIds: Array.from(d.productIds),
+  }));
+
+  // 7. Match discount for this product
 
   // Final mapped cart items
   return filtered.map((r) => {
-    const basePrice = r.productPrice || 0;
-    const quantity = r.quantity || 1;
+    const matchedDiscounts = allDiscounts.filter((d) => {
+      const matchesProduct = d.productIds?.includes(r.productId ?? 0);
+      const matchesSubcategory =
+        r.subcategoryId && d.subcategoryIds?.includes(r.subcategoryId);
+      const matchesCategory =
+        r.categoryId && d.categoryIds?.includes(r.categoryId);
+      const appliesToAll = d.applyTo === "all";
 
-    //const discounts =  [];
-
-    // Find the best applicable discount
-    const discountedPercentage = 0;
-    const discountedPrice = basePrice;
-
-    
+      return (
+        matchesProduct || matchesSubcategory || matchesCategory || appliesToAll
+      );
+    });
 
     // Match image by productId and colorId
     const images = imageMap.get(r?.productId || 0) || [];
@@ -119,16 +217,15 @@ export const getCartItems = async (
       cartItemId: r.cartItemId,
       productId: r.productId ?? -1,
       name: r.productName ?? "",
-      price: basePrice ?? 0,
+      price: r.productPrice ?? 0,
       imageUrl: matchedImage?.url || "",
-      quantity,
+      quantity: r.quantity,
       pvId: r.variantId ?? 0,
       colorId: r.colorId ?? 0,
       colorName: r.colorName ?? "",
       sizeId: r.sizeId ?? 0,
       sizeName: r.sizeName ?? "",
-      discountedPercentage,
-      discountedPrice,
+      discounts: matchedDiscounts,
     };
   });
 };
@@ -254,6 +351,261 @@ export const deleteCartItem = async ({
   return { deleted: true, item: deleted[0] };
 };
 
+type OrderItemsDetails = {
+  productId: number | null;
+  name: string;
+  price: number;
+  discountedPrice: number;
+  discountedText: string;
+  imageUrl: string;
+  quantity: number;
+  colorName: string;
+  sizeName: string;
+};
+
+export const getCheckOutItems = async (
+  userId: string
+): Promise<{
+  cartItems: OrderItemsDetails[];
+  totalItems: number;
+  savings: number;
+  subtotal: number;
+  shipping: number;
+  tax: number;
+  total: number;
+}> => {
+  const rows = await db
+    .select({
+      cartItemId: cartItems.id,
+      quantity: cartItems.quantity,
+      productId: products.id,
+      productName: products.name,
+      productPrice: products.price,
+      variantId: productVariants.id,
+      colorId: colors.id,
+      colorName: colors.name,
+      colorCode: colors.color_code,
+      sizeId: sizes.id,
+      sizeName: sizes.name,
+      categoryId: products.categoryId,
+      subcategoryId: products.subcategoryId,
+    })
+    .from(cartItems)
+    .leftJoin(products, eq(cartItems.productId, products.id))
+    .leftJoin(
+      productVariants,
+      eq(cartItems.productVariantId, productVariants.id)
+    )
+    .leftJoin(categories, eq(products.categoryId, categories.id))
+    .leftJoin(subcategories, eq(products.subcategoryId, subcategories.id))
+    .leftJoin(colors, eq(productVariants.colorId, colors.id))
+    .leftJoin(sizes, eq(productVariants.sizeId, sizes.id))
+    .where(eq(cartItems.userId, userId));
+
+  const seen = new Set<number>();
+  const filtered = rows.filter((r) => {
+    if (seen.has(r.cartItemId)) return false;
+    seen.add(r.cartItemId);
+    return true;
+  });
+
+  const productIds = filtered.map((r) => r.productId);
+  const uniqueProductIds = Array.from(new Set(productIds));
+
+  const productImagesDB = await db
+    .select({
+      url: productImages.url,
+      productId: productImages.productId,
+      imageColorId: productImages.colorId,
+    })
+    .from(productImages)
+    .where(inArray(productImages.productId, uniqueProductIds as number[]));
+
+  const imageMap = new Map<
+    number,
+    { url: string; imageColorId: number | null }[]
+  >();
+  for (const img of productImagesDB) {
+    if (!imageMap.has(img.productId)) imageMap.set(img.productId, []);
+    imageMap.get(img.productId)!.push(img);
+  }
+
+  const discountResults = await db
+    .select({
+      discountId: discounts.id,
+      name: discounts.name,
+      type: discounts.type,
+      value: discounts.value,
+      minQuantity: discounts.minQuantity,
+      applyTo: discounts.appliedTo,
+      categoryId: discountCategories.categoryId,
+      subcategoryId: discountSubcategories.subcategoryId,
+      productId: discountProducts.productId,
+    })
+    .from(discounts)
+    .leftJoin(
+      discountCategories,
+      eq(discounts.id, discountCategories.discountId)
+    )
+    .leftJoin(
+      discountSubcategories,
+      eq(discounts.id, discountSubcategories.discountId)
+    )
+    .leftJoin(discountProducts, eq(discounts.id, discountProducts.discountId));
+
+  interface DiscountResult {
+    discountId: number;
+    name: string;
+    type: string;
+    value: number;
+    minQuantity: number;
+    applyTo: string;
+    categoryId?: number;
+    subcategoryId?: number;
+    productId?: number;
+  }
+
+  interface DiscountMapValue {
+    discountId: number;
+    name: string;
+    type: string;
+    value: number;
+    minQuantity: number;
+    applyTo: string;
+    categoryIds: Set<number>;
+    subcategoryIds: Set<number>;
+    productIds: Set<number>;
+  }
+
+  const discountMap = new Map<number, DiscountMapValue>();
+
+  for (const row of discountResults as DiscountResult[]) {
+    const {
+      discountId,
+      name,
+      type,
+      value,
+      minQuantity,
+      applyTo,
+      categoryId,
+      subcategoryId,
+      productId,
+    } = row;
+
+    if (!discountMap.has(discountId)) {
+      discountMap.set(discountId, {
+        discountId,
+        name,
+        type,
+        value,
+        minQuantity,
+        applyTo,
+        categoryIds: new Set<number>(),
+        subcategoryIds: new Set<number>(),
+        productIds: new Set<number>(),
+      });
+    }
+
+    const d = discountMap.get(discountId)!; // Non-null assertion since we just set it
+
+    if (categoryId) d.categoryIds.add(categoryId);
+    if (subcategoryId) d.subcategoryIds.add(subcategoryId);
+    if (productId) d.productIds.add(productId);
+  }
+
+  const allDiscounts = Array.from(discountMap.values()).map((d) => ({
+    ...d,
+    categoryIds: Array.from(d.categoryIds),
+    subcategoryIds: Array.from(d.subcategoryIds),
+    productIds: Array.from(d.productIds),
+  }));
+
+  // Prepare final cart items
+  const cartItemsList = filtered.map((r) => {
+    const matchedDiscounts = allDiscounts.filter((d) => {
+      const matchesProduct = d.productIds?.includes(r.productId || 0);
+      const matchesSubcategory =
+        r.subcategoryId && d.subcategoryIds?.includes(r.subcategoryId);
+      const matchesCategory =
+        r.categoryId && d.categoryIds?.includes(r.categoryId);
+      const appliesToAll = d.applyTo === "all";
+
+      return (
+        matchesProduct || matchesSubcategory || matchesCategory || appliesToAll
+      );
+    });
+
+    const bestDiscount = getBestDiscount(
+      matchedDiscounts,
+      r.productPrice ?? 0,
+      r.quantity
+    );
+    const discountedPricePerItem = bestDiscount
+      ? bestDiscount.type === "percentage"
+        ? Number(
+            ((r.productPrice ?? 0) * (1 - bestDiscount.value / 100)).toFixed(2)
+          )
+        : Number(
+            (
+              ((r.productPrice ?? 0) * r.quantity - bestDiscount.value) /
+              r.quantity
+            ).toFixed(2)
+          )
+      : r.productPrice ?? 0;
+
+    const discountedText = bestDiscount
+      ? bestDiscount.type === "percentage"
+        ? `${bestDiscount.value}% OFF`
+        : `₹${bestDiscount.value} OFF`
+      : "";
+
+    const images = imageMap.get(r.productId ?? 0) || [];
+    const matchedImage =
+      images.find((img) => img.imageColorId === r.colorId) ?? images[0];
+
+    return {
+      productId: r.productId,
+      name: r.productName ?? "",
+      price: Number((r.productPrice ?? 0).toFixed(2)),
+
+      discountedPrice: Number(discountedPricePerItem?.toFixed(2) ?? 0),
+      discountedText: discountedText,
+      imageUrl: matchedImage?.url || "",
+      quantity: r.quantity,
+      colorName: r.colorName ?? "",
+      sizeName: r.sizeName ?? "",
+    };
+  });
+
+  // Calculate totals
+  const subtotalOriginalPrice = cartItemsList.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+  const subtotal = cartItemsList.reduce(
+    (sum, item) => sum + item.discountedPrice * item.quantity,
+    0
+  );
+  const totalItems = cartItemsList.reduce(
+    (sum, item) => sum + item.quantity,
+    0
+  );
+  const savings = subtotalOriginalPrice - subtotal;
+  const shipping = subtotal >= FREE_SHIPPING_LIMIT ? 0 : SHIPPING_CHARGES;
+  const tax = (subtotal + shipping) * (TAX_PERCENTAGE / 100);
+  const total = subtotal + shipping + tax;
+
+  return {
+    cartItems: cartItemsList,
+    totalItems: totalItems,
+    subtotal: Number(subtotal.toFixed(2)),
+    savings: Number(savings.toFixed(2)),
+    shipping: Number(shipping.toFixed(2)),
+    tax: Number(tax.toFixed(2)),
+    total: Number(total.toFixed(2)),
+  };
+};
+
 // Input type
 type PlaceOrderParams = {
   userId: string;
@@ -261,13 +613,12 @@ type PlaceOrderParams = {
   paymentMethod: string;
 };
 
-// Main function
 export async function placeOrder({
   userId,
   addressId,
   paymentMethod,
 }: PlaceOrderParams) {
-  // 1. Validate & Prepare Cart Items
+  // 1. Fetch & validate cart
   const cartrows = await db
     .select({
       cartItemId: cartItems.id,
@@ -276,6 +627,8 @@ export async function placeOrder({
       orderedQuantity: cartItems.quantity,
       price: products.price,
       availableQuantity: productVariants.quantity,
+      categoryId: products.categoryId,
+      subcategoryId: products.subcategoryId,
     })
     .from(cartItems)
     .leftJoin(products, eq(cartItems.productId, products.id))
@@ -283,9 +636,11 @@ export async function placeOrder({
       productVariants,
       eq(cartItems.productVariantId, productVariants.id)
     )
+    .leftJoin(categories, eq(products.categoryId, categories.id))
+    .leftJoin(subcategories, eq(products.subcategoryId, subcategories.id))
     .where(eq(cartItems.userId, userId));
 
-  // Remove duplicates (safety check)
+  // Remove duplicates
   const seen = new Set<number>();
   const filteredCart = cartrows.filter((r) => {
     if (seen.has(r.cartItemId)) return false;
@@ -293,17 +648,16 @@ export async function placeOrder({
     return true;
   });
 
-  // Check if cart is empty
   if (!filteredCart.length) {
     return {
       success: false,
       orderId: null,
-      type: "cartemty",
-      message: `Cart is empty.`,
+      type: "cartempty",
+      message: "Cart is empty.",
     };
   }
 
-  // Check availability
+  // Check stock
   for (const item of filteredCart) {
     if (item.orderedQuantity > (item.availableQuantity ?? 0)) {
       return {
@@ -315,36 +669,178 @@ export async function placeOrder({
     }
   }
 
-  // Fetch applicable discounts for products in the cart
-  
+  // 2. Fetch discounts
+  const discountResults = await db
+    .select({
+      discountId: discounts.id,
+      name: discounts.name,
+      type: discounts.type,
+      value: discounts.value,
+      minQuantity: discounts.minQuantity,
+      applyTo: discounts.appliedTo,
+      categoryId: discountCategories.categoryId,
+      subcategoryId: discountSubcategories.subcategoryId,
+      productId: discountProducts.productId,
+    })
+    .from(discounts)
+    .leftJoin(
+      discountCategories,
+      eq(discounts.id, discountCategories.discountId)
+    )
+    .leftJoin(
+      discountSubcategories,
+      eq(discounts.id, discountSubcategories.discountId)
+    )
+    .leftJoin(discountProducts, eq(discounts.id, discountProducts.discountId));
 
-  // Map discounts per product
- 
+  interface DiscountResult {
+    discountId: number;
+    name: string;
+    type: string;
+    value: number;
+    minQuantity: number;
+    applyTo: string;
+    categoryId?: number;
+    subcategoryId?: number;
+    productId?: number;
+  }
 
+  interface DiscountMapValue {
+    discountId: number;
+    name: string;
+    type: string;
+    value: number;
+    minQuantity: number;
+    applyTo: string;
+    categoryIds: Set<number>;
+    subcategoryIds: Set<number>;
+    productIds: Set<number>;
+  }
 
+  // Group discounts
+  const discountMap = new Map<number, DiscountMapValue>();
 
-  // 2. Calculate totals
-  const orginalAmount = 0;
-  const totalAmount = 0;
-  const discountAmount = 0;
+  for (const row of discountResults as DiscountResult[]) {
+    const {
+      discountId,
+      name,
+      type,
+      value,
+      minQuantity,
+      applyTo,
+      categoryId,
+      subcategoryId,
+      productId,
+    } = row;
 
+    if (!discountMap.has(discountId)) {
+      discountMap.set(discountId, {
+        discountId,
+        name,
+        type,
+        value,
+        minQuantity,
+        applyTo,
+        categoryIds: new Set<number>(),
+        subcategoryIds: new Set<number>(),
+        productIds: new Set<number>(),
+      });
+    }
 
+    const d = discountMap.get(discountId)!; // Non-null assertion since we just set it
+
+    if (categoryId) d.categoryIds.add(categoryId);
+    if (subcategoryId) d.subcategoryIds.add(subcategoryId);
+    if (productId) d.productIds.add(productId);
+  }
+
+  const allDiscounts = Array.from(discountMap.values()).map((d) => ({
+    ...d,
+    categoryIds: Array.from(d.categoryIds),
+    subcategoryIds: Array.from(d.subcategoryIds),
+    productIds: Array.from(d.productIds),
+  }));
+
+  // 3. Calculate totals
+  let originalAmount = 0;
+  let totalAmount = 0;
+  let discountAmount = 0;
+
+  type OrderItemValue = {
+    orderId?: number; // will set after order is created
+    productId: number;
+    productVariantId: number;
+    quantity: number;
+    price: number;
+    discountedPrice: number;
+    total: number;
+  };
+  const orderItemValues: OrderItemValue[] = [];
+
+  for (const r of filteredCart) {
+    const basePrice = r.price ?? 0;
+    const quantity = r.orderedQuantity;
+
+    const matchedDiscounts = allDiscounts.filter((d) => {
+      const matchesProduct = d.productIds?.includes(r.productId);
+      const matchesSubcategory =
+        r.subcategoryId && d.subcategoryIds?.includes(r.subcategoryId);
+      const matchesCategory =
+        r.categoryId && d.categoryIds?.includes(r.categoryId);
+      const appliesToAll = d.applyTo === "all";
+
+      return (
+        matchesProduct || matchesSubcategory || matchesCategory || appliesToAll
+      );
+    });
+
+    const bestDiscount = getBestDiscountValue(
+      matchedDiscounts,
+      basePrice,
+      quantity
+    );
+    const finalPrice = bestDiscount.discountedPrice;
+    const itemOriginal = basePrice * quantity;
+    const itemTotal = finalPrice * quantity;
+
+    originalAmount += itemOriginal;
+    totalAmount += itemTotal;
+    discountAmount += itemOriginal - itemTotal;
+
+    orderItemValues.push({
+      productId: r.productId,
+      productVariantId: r.productVariantId,
+      quantity,
+      price: basePrice,
+      discountedPrice: finalPrice,
+      total: itemTotal,
+    });
+  }
+
+  originalAmount = parseFloat(originalAmount.toFixed(2));
+  totalAmount = parseFloat(totalAmount.toFixed(2));
+  discountAmount = parseFloat(discountAmount.toFixed(2));
 
   let shippingAmount = SHIPPING_CHARGES;
-  if (totalAmount > FREE_SHIPPING_LIMIT) {
+  if (totalAmount >= FREE_SHIPPING_LIMIT) {
     shippingAmount = 0;
   }
+
+  shippingAmount = parseFloat(shippingAmount.toFixed(2));
   const taxPercentage = TAX_PERCENTAGE;
-  const taxAmount = (totalAmount + shippingAmount) * TAX_PERCENTAGE;
+  const taxAmount = parseFloat(
+    ((totalAmount + shippingAmount) * taxPercentage).toFixed(2)
+  );
+  const finalAmount = parseFloat(
+    (totalAmount + shippingAmount + taxAmount).toFixed(2)
+  );
 
-  const finalAmount = totalAmount + shippingAmount;
-
-  // 3. Create order
+  // 4. Insert order
   const [newOrder] = await db
     .insert(orders)
     .values({
       userId,
-      orginalAmount,
+      orginalAmount: originalAmount,
       totalAmount,
       discountAmount,
       taxAmount,
@@ -356,12 +852,20 @@ export async function placeOrder({
     })
     .returning();
 
-  // 4. Insert into orderItems
+  // 5. Insert order items
+  const finalOrderItems = orderItemValues.map((item) => ({
+    orderId: newOrder.id,
+    productId: item.productId,
+    productVariantId: item.productVariantId,
+    quantity: item.quantity,
+    orginalprice: item.price,
+    discount: item.discountedPrice,
+    finalprice: item.total,
+  }));
 
+  await db.insert(orderItems).values(finalOrderItems);
 
-  //await db.insert(orderItems).values();
-
-  // 5. Clear cart
+  // 6. Clear cart
   await db.delete(cartItems).where(eq(cartItems.userId, userId));
 
   return {

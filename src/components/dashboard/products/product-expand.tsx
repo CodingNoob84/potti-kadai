@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getProductDetailsById } from "@/server/products";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Package, Ticket } from "lucide-react";
+import { Loader2, Package } from "lucide-react";
 import Image from "next/image";
 
 export const ProductDetailsInExpand = ({
@@ -65,103 +65,8 @@ export const ProductDetailsInExpand = ({
           </CardContent>
         </Card>
 
-        {/* Discount Section */}
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            <h4 className="font-medium text-lg">Offers & Discounts</h4>
-
-            {/* Discounts Section */}
-            <div className="space-y-3">
-              <h5 className="font-medium text-sm text-muted-foreground">
-                Discounts
-              </h5>
-              {productDetail.discounts?.length ? (
-                <div className="grid gap-3">
-                  {productDetail.discounts.map((discount, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-full">
-                          {/* {discount?.type === "direct" ? (
-                            <Percent className="h-4 w-4 text-primary" />
-                          ) : (
-                            <Package className="h-4 w-4 text-primary" />
-                          )} */}
-                        </div>
-                        <div>
-                          {/* <p className="font-medium">
-                            {discount.type === "direct"
-                              ? `Flat ${discount.value}% off`
-                              : `Buy ${discount.quantity} get ${discount.value}% off`}
-                          </p> */}
-                          {/* <p className="text-xs text-muted-foreground">
-                            {discount.type === "direct"
-                              ? "On all purchases"
-                              : `Minimum ${discount.quantity} items required`}
-                          </p> */}
-                        </div>
-                      </div>
-                      {/* <Badge variant="secondary" className="px-3 py-1">
-                        {discount.type === "direct"
-                          ? `${discount.value}% OFF`
-                          : `${discount.value}% OFF`}
-                      </Badge> */}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center p-4 border border-dashed rounded-lg">
-                  <p className="text-muted-foreground text-sm">
-                    No discounts available
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Promo Codes Section */}
-            <div className="space-y-3">
-              <h5 className="font-medium text-sm text-muted-foreground">
-                Promo Codes
-              </h5>
-              {productDetail.promocodes?.length ? (
-                <div className="grid gap-3">
-                  {productDetail.promocodes.map((promo, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-full">
-                          <Ticket className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          {/* <p className="font-medium">{promo.promocode}</p> */}
-                          <p className="text-xs text-muted-foreground">
-                            Valid until {new Date().toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      {/* <Badge variant="secondary" className="px-3 py-1">
-                        {promo.value}% OFF
-                      </Badge> */}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center p-4 border border-dashed rounded-lg">
-                  <p className="text-muted-foreground text-sm">
-                    No promo codes available
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Inventory Section */}
-        <Card className="md:col-span-2">
+        <Card className="md:col-span-1">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-semibold text-lg">Inventory Management</h4>

@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { getBestDiscount, getDiscountValues } from "@/lib/utils";
 import { DiscountType } from "@/types/products";
 
 export const PriceCalculation = ({
@@ -11,21 +12,13 @@ export const PriceCalculation = ({
   price: number;
   quantity: number;
 }) => {
-  // Find direct and quantity discounts
-  const directDiscount = discounts.find((d) => d.type === "direct");
-  const quantityDiscount = discounts.find(
-    (d) =>
-      d.type === "quantity" &&
-      typeof d.minQuantity === "number" &&
-      quantity >= d.minQuantity
+  const activeDiscount = getBestDiscount(discounts, price, quantity);
+  const { discountedText, discountedPrice } = getDiscountValues(
+    activeDiscount,
+    price,
+    quantity
   );
-  console.log("quantityDiscount", quantityDiscount);
 
-  // Use quantity discount if applicable, else direct
-  const activeDiscount = quantityDiscount ?? directDiscount;
-
-  const discountPercentage = activeDiscount?.value || 0;
-  const discountedPrice = price - (price * discountPercentage) / 100;
   const totalPrice = price * quantity;
   const totalDiscountedPrice = discountedPrice * quantity;
   const savings = totalPrice - totalDiscountedPrice;
@@ -47,23 +40,15 @@ export const PriceCalculation = ({
               </span>
             </div>
 
-            {discountPercentage > 0 && (
+            {discountedText != "" && (
               <>
                 <div className="flex justify-between">
                   <span className="text-gray-600">
                     Discount{" "}
-                    <Badge className="bg-red-500">
-                      {discountPercentage}% OFF
-                    </Badge>
+                    <Badge className="bg-red-500">{discountedText}</Badge>
                   </span>
                   <span className="text-green-600 font-medium">
                     -₹{savings.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">You Save</span>
-                  <span className="text-green-600 font-medium">
-                    ({discountPercentage}% off)
                   </span>
                 </div>
               </>
@@ -76,7 +61,7 @@ export const PriceCalculation = ({
                 </span>
                 <span className="text-gray-900 font-semibold text-lg">
                   ₹
-                  {discountPercentage > 0
+                  {discountedPrice > 0
                     ? totalDiscountedPrice.toFixed(2)
                     : totalPrice.toFixed(2)}
                 </span>
@@ -87,23 +72,36 @@ export const PriceCalculation = ({
       </Card>
 
       {/* Available Offers */}
-      <Card className="border shadow-sm">
-        <CardContent className="px-4 space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Available Offers
-          </h3>
+      <Card className="border shadow-sm rounded-lg">
+        <CardContent className="px-3 py-3">
+          <div className="flex items-center gap-2 mb-3">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 text-yellow-500"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+            <h3 className="text-sm font-semibold text-gray-800">
+              Available Offers
+            </h3>
+          </div>
 
-          <div className="space-y-4">
+          <div className="space-y-2">
             {discounts.map((discount, index) => (
-              <div key={index} className="flex items-start gap-3">
+              <div
+                key={index}
+                className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-md"
+              >
                 <div
-                  className={`${
-                    discount.type === "quantity"
-                      ? "bg-purple-100 text-purple-800"
-                      : "bg-green-100 text-green-800"
-                  } rounded-full p-1.5`}
+                  className={`flex-shrink-0 ${
+                    discount.minQuantity > 1
+                      ? "text-purple-500"
+                      : "text-green-500"
+                  }`}
                 >
-                  {discount.type === "quantity" ? (
+                  {discount.minQuantity > 1 ? (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-4 w-4"
@@ -127,27 +125,23 @@ export const PriceCalculation = ({
                     </svg>
                   )}
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {discount.type === "quantity"
-                      ? `Bulk Discount: ${discount.value}% Off`
-                      : `${discount.value}% Instant Discount`}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {discount.type === "quantity"
-                      ? `Buy ${discount.minQuantity}+ items and get ${discount.value}% off`
-                      : `Get ${discount.value}% off on your order`}
-                  </p>
-                  <div className="flex items-center mt-1">
-                    <p className="text-xs text-blue-600 font-medium mr-2">
-                      T&C Apply
-                    </p>
-                    {discount.type === "quantity" && (
-                      <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
-                        Bulk Deal
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-sm font-medium text-gray-800">
+                      {discount.type === "percentage"
+                        ? `${discount.value}% OFF`
+                        : `₹${discount.value} OFF`}
+                    </span>
+                    {discount.minQuantity > 1 && (
+                      <span className="text-xs text-gray-500">
+                        on {discount.minQuantity}+ items
                       </span>
                     )}
                   </div>
+                  <p className="text-xs text-gray-500 mt-0.5 truncate">
+                    {discount.name}
+                  </p>
                 </div>
               </div>
             ))}

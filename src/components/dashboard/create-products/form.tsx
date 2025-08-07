@@ -13,20 +13,14 @@ type ProductFormTypes = {
 };
 
 export const ProductForm = ({ type, form, onSubmit }: ProductFormTypes) => {
-  console.log("type", type);
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ProductBasicInfo form={form} />
-          {/* <AddCategoriesBlock form={form} /> */}
           <ImagesBlock form={form} />
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"></div>
-
         <InventoryManagement form={form} />
-
         <div className="flex justify-end space-x-4">
           <Button type="button" variant="outline">
             Cancel

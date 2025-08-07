@@ -4,10 +4,10 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSession } from "@/lib/auth-client";
 import { addToCart, CartItemDetail } from "@/server/cart";
-import { ProductDetail } from "@/server/products";
-import { sizeTypes } from "@/types/products";
+import { ProductDetail, sizesType } from "@/server/products";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  Ban,
   Heart,
   Minus,
   Plus,
@@ -23,7 +23,7 @@ import { SizeSelector } from "./size-selector";
 
 type ProductSelectionProps = {
   product: ProductDetail;
-  discountedPercentage: number;
+  discountedText: string;
   discountedPrice: number;
   quantity: number;
   setQuantity: (quantity: number) => void;
@@ -37,6 +37,11 @@ type ImageArrType = {
   colorId: number | null;
 };
 
+type WishlistState = {
+  productId: number;
+  variantId: number;
+  isWishlisted: boolean;
+};
 export const getImage = (images: ImageArrType[], colorId: number) => {
   const filtered = images.filter((i) => i.colorId === colorId);
   return filtered.length > 0 ? filtered : images.slice(0, 1); // fallback to first image
@@ -44,7 +49,7 @@ export const getImage = (images: ImageArrType[], colorId: number) => {
 
 export const ProductSelection = ({
   product,
-  discountedPercentage,
+  discountedText,
   discountedPrice,
   quantity,
   setQuantity,
@@ -55,10 +60,11 @@ export const ProductSelection = ({
   const { data: session } = useSession();
   const user = session?.user;
 
-  const [selectedSizeId, setSelectedSizeId] = useState<number | null>(null);
+  const [selectedSize, setSelectedSize] = useState<sizesType | null>(null);
 
-  const [isWishlisted, setIsWishlisted] = useState(false);
-  const [availableSizes, setAvailableSizes] = useState<sizeTypes[]>([]);
+  const [wishlistState, setWishlistState] = useState<WishlistState[]>([]);
+
+  const [availableSizes, setAvailableSizes] = useState<sizesType[]>([]);
 
   const addToCartMutation = useMutation({
     mutationFn: addToCart,
@@ -76,9 +82,6 @@ export const ProductSelection = ({
       const selectedColor = product.inventory.find(
         (c) => c.colorId === selectedColorId
       );
-      const selectedSize = availableSizes.find(
-        (s) => s.sizeId === selectedSizeId
-      );
 
       let updatedCart;
       const newCartItem = {
@@ -91,9 +94,9 @@ export const ProductSelection = ({
         pvId: newItem.productVariantId,
         colorId: selectedColorId,
         colorName: selectedColor?.name,
-        sizeId: selectedSizeId,
-        sizeName: selectedSize?.name,
-        discountedPercentage: discountedPercentage,
+        sizeId: selectedSize?.sizeId,
+        sizeName: selectedSize?.label,
+        discountedPercentage: 0,
         discountedPrice: discountedPrice,
       };
       if (alreadyInCart) {
@@ -126,14 +129,10 @@ export const ProductSelection = ({
       toast.error("Please select any color");
       return;
     }
-    if (!selectedSizeId) {
+    if (!selectedSize) {
       toast.error("Please select any size");
       return;
     }
-
-    const selectedSize = availableSizes.find(
-      (s) => s.sizeId === selectedSizeId
-    );
 
     toast.success("Added to cart");
     const newItem = {
@@ -146,14 +145,11 @@ export const ProductSelection = ({
   };
 
   const handleBuyNow = () => {
-    if (!selectedSizeId || !selectedColorId) {
+    if (!selectedSize || !selectedColorId) {
       toast.error("Please select size and color");
       return;
     }
 
-    const selectedSize = availableSizes.find(
-      (s) => s.sizeId === selectedSizeId
-    );
     const newItem = {
       userId: user?.id ?? "",
       productId: product.id,
@@ -161,6 +157,36 @@ export const ProductSelection = ({
       quantity,
     };
     addToCartMutation.mutate(newItem);
+  };
+
+  const isWishlisted = (variantId: number) => {
+    return wishlistState.some(
+      (item) => item.variantId === variantId && item.isWishlisted
+    );
+  };
+  const handleWishlistToggle = (variantId: number) => {
+    setWishlistState((prev) => {
+      const existingIndex = prev.findIndex(
+        (item) => item.variantId === variantId
+      );
+
+      if (existingIndex >= 0) {
+        return prev.map((item, index) =>
+          index === existingIndex
+            ? { ...item, isWishlisted: !item.isWishlisted }
+            : item
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          productId: product.id,
+          variantId,
+          isWishlisted: true,
+        },
+      ];
+    });
   };
   useEffect(() => {
     if (product.inventory?.length > 0) {
@@ -177,7 +203,7 @@ export const ProductSelection = ({
       );
       if (colorInventory) {
         setAvailableSizes(colorInventory.sizes);
-        setSelectedSizeId(null);
+        setSelectedSize(null);
       }
     }
   }, [selectedColorId, product]);
@@ -205,7 +231,7 @@ export const ProductSelection = ({
         </div>
 
         <div className="flex items-center space-x-3 mb-4">
-          {discountedPercentage > 0 ? (
+          {discountedPrice > 0 ? (
             <>
               <span className="text-2xl font-bold">
                 ₹{discountedPrice.toFixed(2)}
@@ -213,7 +239,9 @@ export const ProductSelection = ({
               <span className="text-lg text-muted-foreground line-through">
                 ₹{product.price}
               </span>
-              <Badge className="bg-red-500">{discountedPercentage}% OFF</Badge>
+              {discountedText != "" && (
+                <Badge className="bg-red-500">{discountedText}</Badge>
+              )}
             </>
           ) : (
             <span className="text-2xl font-bold">₹{product.price}</span>
@@ -255,7 +283,8 @@ export const ProductSelection = ({
       {availableSizes.length > 0 && (
         <SizeSelector
           sizes={availableSizes}
-          onSizeSelect={(sizeId) => setSelectedSizeId(sizeId)}
+          selectedSize={selectedSize}
+          setSelectedSize={setSelectedSize}
         />
       )}
 
@@ -284,26 +313,88 @@ export const ProductSelection = ({
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
-        <Button size="sm" className="flex-1 py-2" onClick={handleAddToCart}>
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          Add to Cart
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="flex-1 py-1"
-          onClick={handleBuyNow}
-        >
-          Buy Now
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setIsWishlisted(!isWishlisted)}
-          className={isWishlisted ? "text-red-500 border-red-500" : ""}
-        >
-          <Heart className={`h-4 w-4 ${isWishlisted ? "fill-current" : ""}`} />
-        </Button>
+        {/* Add to Cart Button */}
+        {!selectedSize ? (
+          <Button size="sm" className="flex-1 py-2" onClick={handleAddToCart}>
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Add to Cart
+          </Button>
+        ) : selectedSize.quantity > 0 ? (
+          <Button size="sm" className="flex-1 py-2" onClick={handleAddToCart}>
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Add to Cart
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white"
+            disabled
+          >
+            <Ban className="h-4 w-4 mr-2" />
+            Out of Stock
+          </Button>
+        )}
+
+        {/* Right-side Buttons */}
+        {!selectedSize || selectedSize.quantity > 0 ? (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 py-1"
+              onClick={handleBuyNow}
+            >
+              Buy Now
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                selectedSize && handleWishlistToggle(selectedSize.pvId)
+              }
+              className={
+                isWishlisted(selectedSize?.pvId ?? 0)
+                  ? "text-green-600 border-green-500 bg-green-50" // Green when wishlisted
+                  : ""
+              }
+              disabled={!selectedSize}
+            >
+              <Heart
+                className={`h-4 w-4 ${
+                  isWishlisted(selectedSize?.pvId ?? 0)
+                    ? "fill-current text-green-600"
+                    : ""
+                }`}
+              />
+            </Button>
+          </>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              selectedSize && handleWishlistToggle(selectedSize.pvId)
+            }
+            className={`flex-1 py-1 ${
+              isWishlisted(selectedSize.pvId)
+                ? "text-green-600 border-green-500 bg-green-50" // Green when wishlisted
+                : "animate-pulse border-red-500 shadow-[0_0_6px_2px_rgba(239,68,68,0.3)] hover:shadow-[0_0_8px_3px_rgba(239,68,68,0.4)]"
+            }`}
+            title="Out of stock - Add to wishlist"
+          >
+            {isWishlisted(selectedSize.pvId) ? (
+              <span className="flex items-center gap-2">
+                <Heart className="h-4 w-4 fill-current text-green-600" />
+                Added to Wishlist
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Heart className="h-4 w-4" />
+                Add to Wishlist
+              </span>
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Features */}

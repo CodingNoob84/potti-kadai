@@ -16,28 +16,16 @@ export type colorsTypes = {
   is_active: boolean;
 };
 
-export type sizeTypes = {
-  sizeId: number;
-  name: string;
-  quantity: number;
-  indiaSize: string;
-  usSize: string;
-  ukSize: string;
-  euSize: string;
-  pvId: number;
-};
-
-export type inventoryType = {
-  colorId: number;
-  name: string;
-  colorCode: string;
-  sizes: sizeTypes[];
-};
-
 export type DiscountType = {
+  discountId: number;
+  name: string;
   type: string;
   value: number;
-  minQuantity: number | null;
+  minQuantity: number;
+  applyTo: string;
+  categoryIds: number[];
+  subcategoryIds: number[];
+  productIds: number[];
 };
 
 export type trendingProductType = {
@@ -45,5 +33,5 @@ export type trendingProductType = {
   name: string;
   price: number;
   images: string[]; // all image URLs
-  discount: DiscountType[]; // typically one, but as array
+  discount: DiscountType | null; // typically one, but as array
 };

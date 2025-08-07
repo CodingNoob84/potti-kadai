@@ -21,47 +21,46 @@ export const TrendingSection = () => {
     queryKey: ["top-products"],
     queryFn: () => getTopProducts(),
   });
-
+  console.log("data", data);
   if (isLoading) {
     return <LoadingSkeleton />;
   }
 
-  // Function to get the best discount (prioritizing direct discounts)
-  const getBestDiscount = (discounts: trendingProductType["discount"]) => {
-    if (!discounts || discounts.length === 0) return null;
-
-    // Find the best direct discount
-    const directDiscount = discounts.find((d) => d.type === "direct");
-    if (directDiscount) return directDiscount;
-
-    // Otherwise return the first discount (could add more logic for quantity discounts)
-    return discounts[0];
-  };
-
+  // Function to calculate final discounted price
   const calculateDiscountedPrice = (product: trendingProductType) => {
-    const discount = getBestDiscount(product.discount);
+    const discount = product.discount;
     if (!discount) return product.price;
 
-    if (discount.type === "direct") {
-      return product.price * (1 - discount.value / 100);
-    } else if (discount.type === "fixed") {
-      return product.price - discount.value;
+    if (discount.type === "percentage") {
+      const discounted = product.price * (1 - discount.value / 100);
+      return Math.max(discounted, 0); // Ensure no negative pricing
     }
+
+    if (discount.type === "amount") {
+      const discounted = product.price - discount.value;
+      return Math.max(discounted, 0); // Prevent negative values
+    }
+
     return product.price;
   };
 
+  // Function to display discount badge/text
   const getDiscountText = (product: trendingProductType) => {
-    const discount = getBestDiscount(product.discount);
+    const discount = product.discount;
     if (!discount) return "";
 
-    switch (discount.type) {
-      case "direct":
-        return `${discount.value}% OFF`;
-      case "quantity":
-        return `Buy ${discount.minQuantity}+ for ${discount.value}% OFF`;
-      default:
-        return "";
+    const buyText =
+      discount.minQuantity > 1 ? ` | Buy ${discount.minQuantity}` : "";
+
+    if (discount.type === "percentage") {
+      return `${discount.value}% OFF${buyText}`;
     }
+
+    if (discount.type === "amount") {
+      return `Save ₹${discount.value}${buyText}`;
+    }
+
+    return "";
   };
 
   return (
