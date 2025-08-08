@@ -28,16 +28,13 @@ export const cartItems = pgTable(
     quantity: integer("quantity").notNull().default(1),
     createdAt: timestamp("created_at").defaultNow(),
   },
-  (table) => {
-    return {
-      // 👇 Composite unique constraint to avoid duplicates
-      uniqueCartItem: unique().on(
-        table.userId,
-        table.productId,
-        table.productVariantId
-      ),
-    };
-  }
+  (table) => [
+    unique("unique_cart_item").on(
+      table.userId,
+      table.productId,
+      table.productVariantId
+    ),
+  ]
 );
 
 export const orders = pgTable("orders", {

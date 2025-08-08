@@ -2,114 +2,161 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { FREE_SHIPPING_LIMIT, SHIPPING_CHARGES } from "@/lib/contants";
+import { getBestDiscountValue, roundToTwoDecimals } from "@/lib/utils";
+import { CartItemDetail } from "@/server/cart";
 import { motion } from "framer-motion";
-import { Truck } from "lucide-react";
+import { Check, Gift, Truck, Zap } from "lucide-react";
 
 export const FreeShippingProgress = ({
-  totalAmount,
+  cartItems,
 }: {
-  totalAmount: number;
+  cartItems: CartItemDetail[] | undefined;
 }) => {
-  const freeShippingThreshold = 2000;
+  let subtotal = 0;
+
+  if (cartItems) {
+    for (const item of cartItems) {
+      const { discountedPrice } = getBestDiscountValue(
+        item.discounts,
+        item.price,
+        item.quantity
+      );
+      subtotal += discountedPrice * item.quantity;
+    }
+  }
   const progressToFreeShipping = Math.min(
-    (totalAmount / freeShippingThreshold) * 100,
+    (subtotal / FREE_SHIPPING_LIMIT) * 100,
     100
   );
-  const amountForFreeShipping = Math.max(
-    0,
-    freeShippingThreshold - totalAmount
-  );
+  const amountForFreeShipping = Math.max(0, FREE_SHIPPING_LIMIT - subtotal);
+
+  const isEligible = subtotal >= FREE_SHIPPING_LIMIT;
+  const isClose = !isEligible && progressToFreeShipping > 70;
+
+  const getProgressMessage = (progress: number): string => {
+    if (progress < 25) return "You're just getting started!";
+    if (progress < 50) return "Keep it going!";
+    if (progress < 75) return "You're over halfway there!";
+    if (progress < 100) return "Almost there!";
+    return "You're there!";
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      key={`shipping-${totalAmount}`} // This ensures re-animation when subtotal changes
     >
       <Card
-        className={`mt-4 ${
-          totalAmount >= freeShippingThreshold
+        className={`relative overflow-hidden rounded-lg ${
+          isEligible
             ? "bg-green-50 border-green-200"
+            : isClose
+            ? "bg-amber-50 border-amber-200"
             : "bg-blue-50 border-blue-200"
         }`}
       >
         <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2">
-              <motion.div
-                animate={{
-                  rotate:
-                    totalAmount >= freeShippingThreshold ? [0, 15, -15, 0] : 0,
-                }}
-                transition={{ duration: 0.7 }}
-              >
-                <Truck
-                  className={`h-4 w-4 ${
-                    totalAmount >= freeShippingThreshold
-                      ? "text-green-600"
-                      : "text-blue-600"
-                  }`}
-                />
-              </motion.div>
-              <motion.span
-                key={`message-${totalAmount}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-sm font-semibold"
-              >
-                {totalAmount >= freeShippingThreshold
-                  ? "You get FREE shipping!"
-                  : "Free Shipping Progress"}
-              </motion.span>
-            </div>
-            <motion.span
-              key={`amount-${totalAmount}`}
-              initial={{ scale: 1.1 }}
-              animate={{ scale: 1 }}
-              className="text-xs font-medium"
+          {/* Top Row - Icon and Main Message */}
+          <div className="flex items-start gap-3 mb-3">
+            <motion.div
+              animate={{
+                rotate: isEligible ? [0, 15, -15, 0] : 0,
+                scale: isEligible ? [1, 1.1, 1] : 1,
+              }}
+              transition={{ duration: 0.7 }}
+              className={`p-2 rounded-full mt-0.5 ${
+                isEligible
+                  ? "bg-green-100 text-green-600"
+                  : isClose
+                  ? "bg-amber-100 text-amber-600"
+                  : "bg-blue-100 text-blue-600"
+              }`}
             >
-              ₹{totalAmount} / ₹{freeShippingThreshold}
-            </motion.span>
+              {isEligible ? (
+                <Gift className="h-4 w-4" />
+              ) : isClose ? (
+                <Zap className="h-4 w-4" />
+              ) : (
+                <Truck className="h-4 w-4" />
+              )}
+            </motion.div>
+
+            <div className="flex-1">
+              <h3
+                className={`font-semibold text-sm ${
+                  isEligible
+                    ? "text-green-800"
+                    : isClose
+                    ? "text-amber-800"
+                    : "text-blue-800"
+                }`}
+              >
+                {isEligible
+                  ? "🎉 Free shipping unlocked!"
+                  : isClose
+                  ? "You're almost there!"
+                  : "Free shipping progress"}
+              </h3>
+
+              {/* Amount Needed/Saved - Mobile Optimized */}
+              <div className="flex flex-wrap items-baseline gap-1 mt-1">
+                {isEligible ? (
+                  <span className="text-xs text-green-700 flex items-center gap-1">
+                    <Check className="h-3 w-3" />
+                    You saved ₹{SHIPPING_CHARGES}
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-xs font-medium">
+                      Add ₹{amountForFreeShipping.toFixed(2)} more
+                    </span>
+                    <span className="text-xs text-gray-600">
+                      for free shipping
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Amount Display - Right-aligned */}
+            <div className="text-right">
+              <div className="text-base font-bold">
+                ₹{roundToTwoDecimals(subtotal)}
+              </div>
+              <div className="text-xs text-gray-500">
+                / ₹{FREE_SHIPPING_LIMIT}
+              </div>
+            </div>
           </div>
 
-          <motion.div
-            key={`progress-${totalAmount}`}
-            initial={{ width: 0 }}
-            animate={{ width: "100%" }}
-            transition={{ duration: 2 }}
-          >
+          {/* Progress Bar */}
+          <div className="mb-2">
             <Progress
               value={progressToFreeShipping}
               className={`h-2 ${
-                totalAmount >= freeShippingThreshold
-                  ? "[&>div]:bg-green-500"
-                  : `[&>div]:bg-blue-500 ${
-                      progressToFreeShipping > 80 ? "animate-pulse" : ""
-                    }`
+                isEligible
+                  ? "bg-green-200 [&>div]:bg-green-500"
+                  : isClose
+                  ? "bg-amber-200 [&>div]:bg-amber-500"
+                  : "bg-blue-200 [&>div]:bg-blue-500"
               }`}
             />
-          </motion.div>
+          </div>
 
-          <div className="flex justify-between items-center mt-2">
-            <motion.span
-              key={`hint-${totalAmount}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-xs text-muted-foreground"
-            >
-              {totalAmount >= freeShippingThreshold
-                ? "You saved ₹99 on shipping!"
-                : `Add ₹${amountForFreeShipping} more for free shipping`}
-            </motion.span>
-            <motion.span
-              key={`percent-${progressToFreeShipping}`}
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              className="text-xs text-muted-foreground"
-            >
-              {Math.round(progressToFreeShipping)}% complete
-            </motion.span>
+          {/* Progress Percentage */}
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-gray-600">
+              {isEligible
+                ? "Order qualifies for free delivery"
+                : getProgressMessage(progressToFreeShipping)}
+            </span>
+            {!isEligible && (
+              <span className="text-xs font-medium">
+                {roundToTwoDecimals(progressToFreeShipping)}%
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>

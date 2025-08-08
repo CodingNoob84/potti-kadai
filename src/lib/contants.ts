@@ -1,3 +1,5 @@
+export const CURRENCY_SYMBOL = "₹";
+
 export const SHIPPING_CHARGES = 99;
 export const FREE_SHIPPING_LIMIT = 2000;
 

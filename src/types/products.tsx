@@ -16,6 +16,22 @@ export type colorsTypes = {
   is_active: boolean;
 };
 
+export type CartItemDetail = {
+  cartItemId: number;
+  productId: number;
+  name: string;
+  price: number;
+  imageUrl: string;
+  availableQuantity: number;
+  quantity: number;
+  pvId: number;
+  colorId: number;
+  colorName: string;
+  sizeId: number;
+  sizeName: string;
+  discounts: DiscountType[];
+};
+
 export type DiscountType = {
   discountId: number;
   name: string;
