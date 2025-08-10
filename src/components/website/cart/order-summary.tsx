@@ -33,11 +33,11 @@ import { toast } from "sonner";
 
 export const OrderSummary = ({
   cartItems,
-  outOfStockItems,
 }: {
   cartItems: CartItemDetail[] | undefined;
-  outOfStockItems: { productId: number; productVariantId: number }[];
 }) => {
+  //const queryClient = useQueryClient();
+  console.log("cartItems", cartItems);
   const router = useRouter();
   const [openModal, setOpenModal] = useState(false);
   const totalItems = cartItems?.reduce((sum, item) => sum + item.quantity, 0);
@@ -65,12 +65,8 @@ export const OrderSummary = ({
   const total = round2(totalWithShipping + totaltax);
 
   const handleProceedCheckOut = () => {
-    if (outOfStockItems.length > 0) {
-      setOpenModal(true);
-    } else {
-      toast.success("Proceeding to checkout...");
-      router.push("/checkout");
-    }
+    toast.success("Proceeding to checkout...");
+    router.push("/checkout");
   };
 
   const handleRemoveAllOutOfStock = () => {

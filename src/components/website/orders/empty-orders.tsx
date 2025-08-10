@@ -3,12 +3,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { ArrowRight, Heart, ShoppingBag, Sparkles } from "lucide-react";
+import { ArrowRight, Package, ShoppingBag, Sparkles } from "lucide-react";
 import Link from "next/link";
 
-export function EmptyWishlist() {
+export function EmptyOrders() {
   return (
-    <div className="min-h-screen  flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-secondary/5 flex items-center justify-center">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -23,9 +23,9 @@ export function EmptyWishlist() {
               className="mb-6"
             >
               <div className="relative mx-auto w-24 h-24 mb-4">
-                <div className="absolute inset-0 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full opacity-20 animate-pulse"></div>
-                <div className="absolute inset-2 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full flex items-center justify-center">
-                  <Heart className="h-8 w-8 text-white" />
+                <div className="absolute inset-0 bg-primary rounded-full opacity-20 animate-pulse"></div>
+                <div className="absolute inset-2 bg-primary rounded-full flex items-center justify-center">
+                  <Package className="h-8 w-8 text-primary-foreground" />
                 </div>
               </div>
             </motion.div>
@@ -37,11 +37,11 @@ export function EmptyWishlist() {
               className="space-y-4"
             >
               <h2 className="text-2xl font-bold text-gray-900">
-                Your wishlist is empty
+                No orders yet
               </h2>
               <p className="text-gray-600">
-                Save items you love for later. Start browsing and add products
-                to your wishlist by clicking the heart icon.
+                You haven&apos;t placed any orders yet. Start shopping to see
+                your order history here!
               </p>
             </motion.div>
 
@@ -54,7 +54,7 @@ export function EmptyWishlist() {
               <Button
                 asChild
                 size="lg"
-                className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+                className="w-full bg-primary hover:bg-primary/90"
               >
                 <Link href="/products" className="flex items-center gap-2">
                   <ShoppingBag className="h-4 w-4" />
@@ -63,10 +63,13 @@ export function EmptyWishlist() {
                 </Link>
               </Button>
 
-              <Button asChild variant="outline" size="lg" className="w-full">
-                <Link href="/cart" className="flex items-center gap-2">
-                  View Cart
-                </Link>
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="w-full bg-transparent"
+              >
+                <Link href="/wishlist">View Wishlist</Link>
               </Button>
             </motion.div>
 
@@ -77,7 +80,7 @@ export function EmptyWishlist() {
               className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-500"
             >
               <Sparkles className="h-4 w-4" />
-              <span>Get notified when items go on sale</span>
+              <span>Free shipping on orders over $50</span>
             </motion.div>
           </CardContent>
         </Card>

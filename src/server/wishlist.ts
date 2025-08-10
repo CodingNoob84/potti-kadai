@@ -143,6 +143,7 @@ export async function getFilteredWishlistItems(userId: string) {
       sizeName: sizes.name,
       categoryId: products.categoryId,
       subcategoryId: products.subcategoryId,
+      createdAt: wishlistItems.createdAt
     })
     .from(wishlistItems)
     .innerJoin(products, eq(wishlistItems.productId, products.id))
@@ -174,6 +175,7 @@ export type WishlistItemDetail = {
   colorName: string;
   sizeId: number;
   sizeName: string;
+  createdAt:Date |null;
   discounts: DiscountType[];
 };
 
@@ -206,6 +208,7 @@ export const getWishlistItems = async (
       colorName: item.colorName,
       sizeId: item.sizeId,
       sizeName: item.sizeName,
+      createdAt:item.createdAt,
       discounts: applicable,
     };
   });

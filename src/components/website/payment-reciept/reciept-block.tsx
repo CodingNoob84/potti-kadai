@@ -26,7 +26,7 @@ export type Order = {
   finalAmount: number;
   status: string;
   paymentMethod: string;
-  address: number;
+  addressId: number;
   createdAt: Date | null;
 };
 

@@ -2,10 +2,10 @@
 // server/cart.ts
 import { db } from "@/db/drizzle";
 import { user } from "@/db/schema/auth";
-import { cartItems, orderItems, orders } from "@/db/schema/cart";
+import { cartItems, orderItems, orders, shipments } from "@/db/schema/cart";
 import { colors, sizes } from "@/db/schema/category";
 
-import { products, productVariants } from "@/db/schema/products";
+import { productImages, products, productVariants } from "@/db/schema/products";
 import { userAddresses } from "@/db/schema/user";
 import {
   FREE_SHIPPING_LIMIT,
@@ -13,7 +13,7 @@ import {
   TAX_PERCENTAGE,
 } from "@/lib/contants";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   DiscountMapValue,
   fetchAllDiscounts,
@@ -188,6 +188,7 @@ export async function getFilteredCartItems(userId: string) {
       sizeName: sizes.name,
       categoryId: products.categoryId,
       subcategoryId: products.subcategoryId,
+      createdAt:cartItems.createdAt,
     })
     .from(cartItems)
     .innerJoin(products, eq(cartItems.productId, products.id))
@@ -197,7 +198,8 @@ export async function getFilteredCartItems(userId: string) {
     )
     .innerJoin(colors, eq(productVariants.colorId, colors.id))
     .innerJoin(sizes, eq(productVariants.sizeId, sizes.id))
-    .where(eq(cartItems.userId, userId));
+    .where(eq(cartItems.userId, userId))
+    .orderBy(cartItems.id);
 
   const seen = new Set<number>();
   return rows.filter((r) => {
@@ -220,6 +222,7 @@ export type CartItemDetail = {
   colorName: string;
   sizeId: number;
   sizeName: string;
+  createdAt:Date|null;
   discounts: DiscountType[];
 };
 
@@ -238,7 +241,7 @@ export type DiscountType = {
 export const getCartItems = async (
   userId: string
 ): Promise<CartItemDetail[]> => {
-  const cartRows = await getFilteredCartItems(userId); // Your current logic abstracted
+  const cartRows = await getFilteredCartItems(userId);
   const productIds = Array.from(new Set(cartRows.map((r) => r.productId)));
   const imageMap = await fetchProductImages(productIds);
   const discounts = await fetchAllDiscounts();
@@ -265,6 +268,7 @@ export const getCartItems = async (
       colorName: item.colorName,
       sizeId: item.sizeId,
       sizeName: item.sizeName,
+      createdAt:item.createdAt,
       discounts: applicable,
     };
   });
@@ -420,7 +424,7 @@ export async function placeOrder({
       shippingAmount,
       finalAmount,
       paymentMethod,
-      address: addressId,
+      addressId: addressId,
     })
     .returning();
 
@@ -535,7 +539,7 @@ export async function getOrderDetails({ orderId }: { orderId: number }) {
     const [address] = await db
       .select()
       .from(userAddresses)
-      .where(eq(userAddresses.id, order.address));
+      .where(eq(userAddresses.id, order.addressId));
     console.log("server-address", address);
     // Get the user
     const [userdetail] = await db
@@ -575,3 +579,166 @@ export async function getOrderDetails({ orderId }: { orderId: number }) {
     throw new Error("Order details fetch failed");
   }
 }
+
+
+export type OrderResponse = {
+  id: string;
+  orderNumber: string;
+  date: string;
+  status: string;
+  total: number;
+  items: {
+    id: number;
+    name: string;
+    price: number;
+    quantity: number;
+    imageUrl: string;
+    sizeName: string;
+    colorName: string;
+  }[];
+  shippingAddress: {
+    name: string | null;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+  };
+  trackingNumber: string | null;
+  estimatedDelivery: string | null;
+  paymentMethod: string;
+};
+
+export const getAllOrders = async (userId: string): Promise<OrderResponse[]> => {
+  // 1. Get all orders for the user
+  const rawOrders = await db
+    .select({
+      id: orders.orderId, // uuid
+      orderNumber: orders.id, // serial ID
+      date: orders.createdAt,
+      status: orders.status,
+      total: orders.finalAmount,
+      paymentMethod: orders.paymentMethod,
+      addressId: orders.addressId,
+    })
+    .from(orders)
+    .where(eq(orders.userId, userId));
+
+  if (!rawOrders.length) return [];
+
+  const orderIds = rawOrders.map(o => o.orderNumber);
+
+  // 2. Get all items for these orders
+  const itemsRaw = await db
+    .select({
+      orderId: orderItems.orderId,
+      id: orderItems.id,
+      productId: products.id,
+      name: products.name,
+      price: orderItems.finalprice,
+      quantity: orderItems.quantity,
+      sizeName: sizes.name,
+      colorName: colors.name,
+      colorId: colors.id,
+    })
+    .from(orderItems)
+    .innerJoin(products, eq(orderItems.productId, products.id))
+    .leftJoin(productVariants, eq(orderItems.productVariantId, productVariants.id))
+    .leftJoin(sizes, eq(productVariants.sizeId, sizes.id))
+    .leftJoin(colors, eq(productVariants.colorId, colors.id))
+    .where(inArray(orderItems.orderId, orderIds));
+
+  const productIds = [...new Set(itemsRaw.map(i => i.productId))];
+
+  // 3. Get all product images
+  const productAllImages = await db
+    .select({
+      productId: productImages.productId,
+      url: productImages.url,
+      colorId: productImages.colorId,
+    })
+    .from(productImages)
+    .where(inArray(productImages.productId, productIds));
+
+  const imageMap = productAllImages.reduce((acc, img) => {
+    const key = `${img.productId}_${img.colorId || "default"}`;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(img.url);
+    return acc;
+  }, {} as Record<string, string[]>);
+
+  const getImage = (productId: number, colorId?: number | null) =>
+    imageMap[`${productId}_${colorId || ""}`]?.[0] ||
+    imageMap[`${productId}_default`]?.[0] ||
+    "/placeholder.svg?height=80&width=80";
+
+  // 4. Get all addresses
+  const addressIds = [...new Set(rawOrders.map(o => o.addressId))];
+  const addresses = await db
+    .select({
+      id: userAddresses.id,
+      name: user.name,
+      address: userAddresses.address,
+      city: userAddresses.city,
+      state: userAddresses.state,
+      pincode: userAddresses.pincode,
+    })
+    .from(userAddresses)
+    .leftJoin(user, eq(userAddresses.userId, user.id))
+    .where(inArray(userAddresses.id, addressIds));
+
+  const addressMap = Object.fromEntries(addresses.map(a => [a.id, a]));
+
+  // 5. Get all shipments
+  const shipmentsData = await db
+    .select({
+      orderId: shipments.orderId,
+      trackingNumber: shipments.trackingNumber,
+      estimatedDelivery: shipments.deliveredAt,
+    })
+    .from(shipments)
+    .where(inArray(shipments.orderId, orderIds));
+
+  const shipmentMap = Object.fromEntries(shipmentsData.map(s => [s.orderId, s]));
+
+  // 6. Stitch together
+  return rawOrders.map(order => {
+    const orderItemsList = itemsRaw
+      .filter(item => item.orderId === order.orderNumber)
+      .map(item => ({
+        id: item.id,
+        name: item.name ?? "",
+        price: Number(item.price),
+        quantity: item.quantity,
+        imageUrl: getImage(item.productId, item.colorId),
+        sizeName: item.sizeName ?? "N/A",
+        colorName: item.colorName ?? "N/A",
+      }));
+
+    const addr = addressMap[order.addressId] || { name: "", address: "", city: "", state: "", pincode: "" };
+    const ship = shipmentMap[order.orderNumber] || {};
+
+    return {
+      id: `ORD-${new Date(order.date ?? new Date()).getFullYear()}-${String(order.orderNumber).padStart(3, "0")}`,
+      orderNumber: String(order.orderNumber),
+      date: order.date ? order.date.toISOString().split("T")[0] : "",
+      status: order.status,
+      total: Number(order.total),
+      items: orderItemsList,
+      shippingAddress: {
+        name: addr.name || null,
+        address: addr.address,
+        city: addr.city,
+        state: addr.state,
+        pincode: addr.pincode,
+      },
+      trackingNumber: ship.trackingNumber || null,
+      estimatedDelivery: ship.estimatedDelivery
+        ? ship.estimatedDelivery.toISOString().split("T")[0]
+        : null,
+      paymentMethod: order.paymentMethod,
+    };
+  });
+};
+
+
+

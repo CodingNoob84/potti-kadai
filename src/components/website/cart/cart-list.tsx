@@ -24,30 +24,19 @@ import {
   Trash2,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-
-type OutOfStockItem = {
-  productId: number;
-  productVariantId: number;
-};
-
-type SetOutOfStockItems = React.Dispatch<
-  React.SetStateAction<OutOfStockItem[]>
->;
 
 export const CartItemsList = ({
   userId,
   cartItems,
-  setOutOfStockItems,
 }: {
   userId: string;
   cartItems: CartItemDetail[] | undefined;
-  setOutOfStockItems: SetOutOfStockItems;
 }) => {
   const queryClient = useQueryClient();
   const [openModal, setOpenModal] = useState(false);
-  const totalItems = cartItems?.reduce((sum, item) => sum + item.quantity, 0);
+  //const totalItems = cartItems?.reduce((sum, item) => sum + item.quantity, 0);
 
   const updateQuantityMutation = useMutation({
     mutationFn: updateQuantity,
@@ -167,6 +156,7 @@ export const CartItemsList = ({
     newQuantity: number,
     availableQuantity: number
   ) => {
+    console.log(availableQuantity, newQuantity);
     if (newQuantity >= 1) {
       if (type == "decreament") {
         updateQuantityMutation.mutate({
@@ -208,18 +198,6 @@ export const CartItemsList = ({
     setOpenModal(false);
   };
 
-  useEffect(() => {
-    if (cartItems) {
-      const outOfStockItems = cartItems
-        .filter((item) => item.availableQuantity == 0)
-        .map((item) => ({
-          productId: item.productId,
-          productVariantId: item.pvId,
-        }));
-      setOutOfStockItems(outOfStockItems);
-    }
-  }, [cartItems, setOutOfStockItems]);
-
   return (
     <>
       <div className="space-y-6">
@@ -231,7 +209,10 @@ export const CartItemsList = ({
           <div className="p-2 bg-primary rounded-lg">
             <Package className="h-5 w-5 text-white" />
           </div>
-          <h2 className="text-xl font-semibold">Your Items ({totalItems})</h2>
+          <h2 className="text-xl font-semibold">
+            Your Items (
+            {cartItems?.reduce((sum, item) => sum + item.quantity, 0)})
+          </h2>
         </motion.div>
 
         <AnimatePresence>
@@ -241,7 +222,6 @@ export const CartItemsList = ({
               item.price,
               item.quantity
             );
-            const isOutOfStock = item.availableQuantity == 0;
             const isLowStock =
               item.availableQuantity <= 5 && item.availableQuantity > 0;
 
@@ -255,25 +235,12 @@ export const CartItemsList = ({
                 layout
               >
                 <Card
-                  className={`group hover:shadow-lg transition-all duration-300 ${
-                    isOutOfStock
-                      ? "bg-red-50 border-red-200 shadow-red-100"
-                      : ""
-                  }`}
+                  className={`group hover:shadow-lg transition-all duration-300 `}
                 >
                   <CardContent className="p-6">
                     {/* Status Badges */}
                     <div className="w-full flex justify-end gap-2 flex-wrap mb-4">
-                      {isOutOfStock && (
-                        <Badge
-                          variant="destructive"
-                          className="flex items-center gap-1 text-xs animate-pulse"
-                        >
-                          <AlertTriangle className="h-3 w-3" />
-                          Out of stock
-                        </Badge>
-                      )}
-                      {isLowStock && !isOutOfStock && (
+                      {isLowStock && (
                         <Badge
                           variant="outline"
                           className="flex items-center gap-1 text-xs border-orange-300 text-orange-700 bg-orange-50"
@@ -295,28 +262,13 @@ export const CartItemsList = ({
                           src={item.imageUrl || "/placeholder.svg"}
                           alt={item.name}
                           fill
-                          className={`object-cover rounded-xl transition-all duration-300 ${
-                            isOutOfStock
-                              ? "opacity-60 grayscale"
-                              : "group-hover:scale-105"
-                          }`}
+                          className={`object-cover rounded-xl transition-all duration-300 `}
                         />
-                        {isOutOfStock && (
-                          <div className="absolute inset-0 bg-black/20 rounded-xl flex items-center justify-center">
-                            <span className="text-white font-semibold text-sm bg-red-500 px-2 py-1 rounded">
-                              Out of Stock
-                            </span>
-                          </div>
-                        )}
                       </div>
 
                       <div className="flex-1 space-y-4">
                         <div>
-                          <h3
-                            className={`font-semibold text-lg mb-2 ${
-                              isOutOfStock ? "text-gray-500" : "text-gray-900"
-                            }`}
-                          >
+                          <h3 className={`font-semibold text-lg mb-2 `}>
                             {item.name}
                           </h3>
                           <div className="flex flex-wrap gap-4 text-sm text-gray-600">
@@ -332,11 +284,7 @@ export const CartItemsList = ({
                         </div>
 
                         <div className="flex items-center gap-3">
-                          <span
-                            className={`font-bold text-xl ${
-                              isOutOfStock ? "text-gray-500" : "text-gray-900"
-                            }`}
-                          >
+                          <span className={`font-bold text-xl `}>
                             ${discountedPrice.toFixed(2)}
                           </span>
                           {item.price > discountedPrice && (
@@ -358,7 +306,7 @@ export const CartItemsList = ({
                                   item.productId,
                                   item.pvId,
                                   item.quantity - 1,
-                                  item.availableQuantity + 1
+                                  item.availableQuantity
                                 )
                               }
                             >
@@ -377,10 +325,9 @@ export const CartItemsList = ({
                                   item.productId,
                                   item.pvId,
                                   item.quantity + 1,
-                                  item.availableQuantity - 1
+                                  item.availableQuantity
                                 )
                               }
-                              disabled={isOutOfStock}
                             >
                               <Plus className="h-4 w-4" />
                             </Button>
