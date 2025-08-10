@@ -1,10 +1,13 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -15,6 +18,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Crown,
   Footprints,
@@ -22,12 +26,11 @@ import {
   Search,
   Shirt,
   ShirtIcon as TShirt,
-  User,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { CartButton } from "../website/cart/cart-button";
+import { CartButton } from "../website/cart/cart-button"; // Assuming this component handles its own animation/count
 
 const categories = {
   trending: [
@@ -145,8 +148,23 @@ const categories = {
   ],
 };
 
+// Dummy user data for the avatar
+const dummyUser = {
+  name: "John Doe",
+  avatarUrl: "/placeholder.svg?height=40&width=40&text=JD",
+};
+
 export default function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isTrendingOpen, setIsTrendingOpen] = useState(false);
+  const [isMensOpen, setIsMensOpen] = useState(false);
+  const [isWomensOpen, setIsWomensOpen] = useState(false);
+  const [isKidsOpen, setIsKidsOpen] = useState(false);
+
+  const dropdownVariants = {
+    hidden: { opacity: 0, y: -10, transition: { duration: 0.2 } },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -156,7 +174,6 @@ export default function Navbar() {
         <Link href="/" className="flex items-center space-x-2">
           <div className="font-bold text-2xl text-primary">PottiKadai</div>
         </Link>
-
         {/* Search Bar - Hidden on mobile */}
         <div className="hidden md:flex flex-1 max-w-md mx-8">
           <div className="relative w-full">
@@ -168,25 +185,39 @@ export default function Navbar() {
             />
           </div>
         </div>
-
         {/* Right side icons */}
         <div className="flex items-center space-x-4">
           {/* Search icon for mobile */}
           <Button variant="ghost" size="icon" className="md:hidden">
             <Search className="h-5 w-5" />
           </Button>
-
           {/* Cart */}
           <CartButton />
-
           {/* Account */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <User className="h-5 w-5" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full h-9 w-9"
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarImage
+                    src={dummyUser.avatarUrl || "/placeholder.svg"}
+                    alt={dummyUser.name}
+                  />
+                  <AvatarFallback>
+                    {dummyUser.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href="/login">Login</Link>
               </DropdownMenuItem>
@@ -194,7 +225,7 @@ export default function Navbar() {
                 <Link href="/signup">Sign Up</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/account">My Account</Link>
+                <Link href="/account">Profile</Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/orders">My Orders</Link>
@@ -204,9 +235,8 @@ export default function Navbar() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
           {/* Mobile Menu */}
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
                 <Menu className="h-5 w-5" />
@@ -216,7 +246,7 @@ export default function Navbar() {
               <SheetHeader>
                 <SheetTitle>Menu</SheetTitle>
               </SheetHeader>
-              <div className="mt-6 space-y-4">
+              <div className="px-4 space-y-4">
                 <div className="space-y-2">
                   <h3 className="font-semibold">Trending</h3>
                   {categories.trending.map((item) => (
@@ -224,7 +254,7 @@ export default function Navbar() {
                       key={item.name}
                       href={item.href}
                       className="block py-2 text-sm text-muted-foreground hover:text-foreground"
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => setIsMobileMenuOpen(false)}
                     >
                       {item.name}
                     </Link>
@@ -237,7 +267,7 @@ export default function Navbar() {
                       key={item.name}
                       href={item.href}
                       className="block py-2 text-sm text-muted-foreground hover:text-foreground"
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => setIsMobileMenuOpen(false)}
                     >
                       {item.name}
                     </Link>
@@ -250,7 +280,7 @@ export default function Navbar() {
                       key={item.name}
                       href={item.href}
                       className="block py-2 text-sm text-muted-foreground hover:text-foreground"
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => setIsMobileMenuOpen(false)}
                     >
                       {item.name}
                     </Link>
@@ -263,7 +293,7 @@ export default function Navbar() {
                       key={item.name}
                       href={item.href}
                       className="block py-2 text-sm text-muted-foreground hover:text-foreground"
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => setIsMobileMenuOpen(false)}
                     >
                       {item.name}
                     </Link>
@@ -274,93 +304,160 @@ export default function Navbar() {
           </Sheet>
         </div>
       </div>
-
       {/* Secondary Navigation - Hidden on mobile */}
       <div className="hidden md:block border-t">
         <div className="container px-4">
           <div className="hidden md:flex items-center space-x-8">
             {/* Trending Dropdown */}
-            <div className="relative group">
-              <button className="flex items-center space-x-1 py-2 text-sm font-medium hover:text-primary transition-colors">
+            <div
+              className="relative"
+              onMouseEnter={() => setIsTrendingOpen(true)}
+              onMouseLeave={() => setIsTrendingOpen(false)}
+            >
+              <Button
+                variant="ghost"
+                className="flex items-center space-x-1 py-2 text-sm font-medium hover:text-primary transition-colors"
+              >
                 <span>Trending</span>
-              </button>
-              <div className="absolute top-full left-0 w-48 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <div className="p-2">
-                  {categories.trending.map((item) => (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-muted rounded-md transition-colors"
-                    >
-                      {item.icon}
-                      <span>{item.name}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              </Button>
+              <AnimatePresence>
+                {isTrendingOpen && (
+                  <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                    variants={dropdownVariants}
+                    className="absolute top-full left-0 w-48 bg-background border rounded-lg shadow-lg z-50 mt-2"
+                  >
+                    <div className="p-2">
+                      {categories.trending.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-muted rounded-md transition-colors"
+                        >
+                          {item.icon}
+                          <span>{item.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Men's Collection Dropdown */}
-            <div className="relative group">
-              <button className="flex items-center space-x-1 py-2 text-sm font-medium hover:text-primary transition-colors">
+            <div
+              className="relative"
+              onMouseEnter={() => setIsMensOpen(true)}
+              onMouseLeave={() => setIsMensOpen(false)}
+            >
+              <Button
+                variant="ghost"
+                className="flex items-center space-x-1 py-2 text-sm font-medium hover:text-primary transition-colors"
+              >
                 <span>Men&apos;s Collection</span>
-              </button>
-              <div className="absolute top-full left-0 w-48 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <div className="p-2">
-                  {categories.mens.map((item) => (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-muted rounded-md transition-colors"
-                    >
-                      {item.icon}
-                      <span>{item.name}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              </Button>
+              <AnimatePresence>
+                {isMensOpen && (
+                  <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                    variants={dropdownVariants}
+                    className="absolute top-full left-0 w-48 bg-background border rounded-lg shadow-lg z-50 mt-2"
+                  >
+                    <div className="p-2">
+                      {categories.mens.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-muted rounded-md transition-colors"
+                        >
+                          {item.icon}
+                          <span>{item.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Women's Collection Dropdown */}
-            <div className="relative group">
-              <button className="flex items-center space-x-1 py-2 text-sm font-medium hover:text-primary transition-colors">
+            <div
+              className="relative"
+              onMouseEnter={() => setIsWomensOpen(true)}
+              onMouseLeave={() => setIsWomensOpen(false)}
+            >
+              <Button
+                variant="ghost"
+                className="flex items-center space-x-1 py-2 text-sm font-medium hover:text-primary transition-colors"
+              >
                 <span>Women&apos;s Collection</span>
-              </button>
-              <div className="absolute top-full left-0 w-48 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <div className="p-2">
-                  {categories.womens.map((item) => (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-muted rounded-md transition-colors"
-                    >
-                      {item.icon}
-                      <span>{item.name}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              </Button>
+              <AnimatePresence>
+                {isWomensOpen && (
+                  <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                    variants={dropdownVariants}
+                    className="absolute top-full left-0 w-48 bg-background border rounded-lg shadow-lg z-50 mt-2"
+                  >
+                    <div className="p-2">
+                      {categories.womens.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-muted rounded-md transition-colors"
+                        >
+                          {item.icon}
+                          <span>{item.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Kids Collection Dropdown */}
-            <div className="relative group">
-              <button className="flex items-center space-x-1 py-2 text-sm font-medium hover:text-primary transition-colors">
+            <div
+              className="relative"
+              onMouseEnter={() => setIsKidsOpen(true)}
+              onMouseLeave={() => setIsKidsOpen(false)}
+            >
+              <Button
+                variant="ghost"
+                className="flex items-center space-x-1 py-2 text-sm font-medium hover:text-primary transition-colors"
+              >
                 <span>Kids Collection</span>
-              </button>
-              <div className="absolute top-full left-0 w-48 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <div className="p-2">
-                  {categories.kids.map((item) => (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-muted rounded-md transition-colors"
-                    >
-                      {item.icon}
-                      <span>{item.name}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              </Button>
+              <AnimatePresence>
+                {isKidsOpen && (
+                  <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                    variants={dropdownVariants}
+                    className="absolute top-full left-0 w-48 bg-background border rounded-lg shadow-lg z-50 mt-2"
+                  >
+                    <div className="p-2">
+                      {categories.kids.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          className="flex items-center space-x-2 px-3 py-2 text-sm hover:bg-muted rounded-md transition-colors"
+                        >
+                          {item.icon}
+                          <span>{item.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
