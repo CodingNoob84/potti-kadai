@@ -37,7 +37,7 @@ export const OrderSummary = ({
   cartItems: CartItemDetail[] | undefined;
 }) => {
   //const queryClient = useQueryClient();
-  console.log("cartItems", cartItems);
+  //console.log("cartItems", cartItems);
   const router = useRouter();
   const [openModal, setOpenModal] = useState(false);
   const totalItems = cartItems?.reduce((sum, item) => sum + item.quantity, 0);
@@ -94,7 +94,7 @@ export const OrderSummary = ({
         <Card className="sticky top-8 shadow-xl border-0 bg-white/80 backdrop-blur-sm">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-xl">
-              <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg">
+              <div className="p-2 bg-gradient-to-r from-green-800 to-emerald-800 rounded-lg">
                 <CreditCard className="h-5 w-5 text-white" />
               </div>
               Order Summary
@@ -169,7 +169,10 @@ export const OrderSummary = ({
             >
               <div className="flex justify-between text-xl font-bold">
                 <span>Order Total</span>
-                <span className="text-2xl">${total.toFixed(2)}</span>
+                <span className="text-2xl">
+                  {CURRENCY_SYMBOL}
+                  {total.toFixed(2)}
+                </span>
               </div>
               {totalSavings > 0 && (
                 <p className="text-sm text-green-600 text-center font-medium">

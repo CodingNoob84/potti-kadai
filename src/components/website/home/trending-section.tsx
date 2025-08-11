@@ -80,7 +80,8 @@ export const TrendingSection = () => {
             const discountedPrice = calculateDiscountedPrice(product);
             const isDiscounted = discountedPrice !== product.price;
             const { rating, reviews } = getReviewRating();
-            const mainImage = product.images[0] || "/placeholder.svg";
+            const mainImage =
+              product.image || "/images/products/dummy-product.jpg";
             const discountText = getDiscountText(product);
 
             return (

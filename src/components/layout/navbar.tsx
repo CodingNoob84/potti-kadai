@@ -1,16 +1,6 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -31,6 +21,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { CartButton } from "../website/cart/cart-button"; // Assuming this component handles its own animation/count
+import { UserDropdown } from "../website/navbar/user-dropdown";
 
 const categories = {
   trending: [
@@ -148,12 +139,6 @@ const categories = {
   ],
 };
 
-// Dummy user data for the avatar
-const dummyUser = {
-  name: "John Doe",
-  avatarUrl: "/placeholder.svg?height=40&width=40&text=JD",
-};
-
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isTrendingOpen, setIsTrendingOpen] = useState(false);
@@ -175,7 +160,7 @@ export default function Navbar() {
           <div className="font-bold text-2xl text-primary">PottiKadai</div>
         </Link>
         {/* Search Bar - Hidden on mobile */}
-        <div className="hidden md:flex flex-1 max-w-md mx-8">
+        {/* <div className="hidden md:flex flex-1 max-w-md mx-8">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
@@ -184,7 +169,7 @@ export default function Navbar() {
               className="pl-10 w-full"
             />
           </div>
-        </div>
+        </div> */}
         {/* Right side icons */}
         <div className="flex items-center space-x-4">
           {/* Search icon for mobile */}
@@ -194,47 +179,7 @@ export default function Navbar() {
           {/* Cart */}
           <CartButton />
           {/* Account */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full h-9 w-9"
-              >
-                <Avatar className="h-8 w-8">
-                  <AvatarImage
-                    src={dummyUser.avatarUrl || "/placeholder.svg"}
-                    alt={dummyUser.name}
-                  />
-                  <AvatarFallback>
-                    {dummyUser.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/login">Login</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/signup">Sign Up</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/account">Profile</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/orders">My Orders</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard">Admin Dashboard</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <UserDropdown />
           {/* Mobile Menu */}
           <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>

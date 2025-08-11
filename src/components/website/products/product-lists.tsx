@@ -162,7 +162,7 @@ export const ProductLists = ({
                   <CardContent className="p-0">
                     <div className="relative aspect-square overflow-hidden rounded-t-lg">
                       <Image
-                        src={product.imageUrl || "/placeholder.svg"}
+                        src={product.images[0] || "/placeholder.svg"}
                         alt={product.name}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -217,7 +217,7 @@ export const ProductLists = ({
                     <div className="flex space-x-4">
                       <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden">
                         <Image
-                          src={product.imageUrl || "/placeholder.svg"}
+                          src={product.images[0] || "/placeholder.svg"}
                           alt={product.name}
                           fill
                           className="object-cover"

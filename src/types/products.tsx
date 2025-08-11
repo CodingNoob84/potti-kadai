@@ -48,6 +48,6 @@ export type trendingProductType = {
   id: number;
   name: string;
   price: number;
-  images: string[]; // all image URLs
+  image: string; // all image URLs
   discount: DiscountType | null; // typically one, but as array
 };

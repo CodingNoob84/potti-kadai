@@ -25,7 +25,6 @@ export default function ProductDetailPage() {
     queryFn: () => getProductById(productId),
     enabled: !!productId,
   });
-  console.log("data", product);
 
   const [selectedColorId, setSelectedColorId] = useState<number | null>(null);
   const [quantity, setQuantity] = useState(1);

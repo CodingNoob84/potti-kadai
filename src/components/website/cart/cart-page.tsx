@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Heart, ShoppingBag, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { CartAutoDeleteTimer } from "./cart-auto-delete-timer";
 
 export const CartClientPage = () => {
   //const router = useRouter();
@@ -80,6 +81,16 @@ export const CartClientPage = () => {
               )}
             </Link>
           </div>
+        </motion.div>
+
+        {/* Auto-Delete Timer */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-6"
+        >
+          <CartAutoDeleteTimer />
         </motion.div>
 
         <div className="grid lg:grid-cols-3 gap-8">

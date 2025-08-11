@@ -59,6 +59,72 @@ export async function removeFromWishlist(input: {
   }
 }
 
+export async function toggleWishlist(input: {
+  userId: string;
+  productId: number;
+  productVariantId: number;
+}) {
+  const { userId, productId, productVariantId } = input;
+
+  try {
+    // Check if item exists in wishlist
+    const existingItem = await db
+      .select()
+      .from(wishlistItems)
+      .where(
+        and(
+          eq(wishlistItems.userId, userId),
+          eq(wishlistItems.productId, productId),
+          eq(wishlistItems.productVariantId, productVariantId)
+        )
+      )
+      .limit(1)
+      .then((res) => res[0]);
+
+    if (existingItem) {
+      // Item exists - remove it
+      const deleteResult = await db
+        .delete(wishlistItems)
+        .where(
+          and(
+            eq(wishlistItems.userId, userId),
+            eq(wishlistItems.productId, productId),
+            eq(wishlistItems.productVariantId, productVariantId)
+          )
+        );
+
+      if (deleteResult.rowCount === 0) {
+        return {
+          success: false,
+          message: "Failed to remove item from wishlist",
+        };
+      }
+
+      return {
+        success: true,
+        message: "Item removed from wishlist",
+        action: "removed",
+      };
+    } else {
+      // Item not present - add it
+      await db.insert(wishlistItems).values({
+        userId,
+        productId,
+        productVariantId,
+      });
+
+      return {
+        success: true,
+        message: "Item added to wishlist",
+        action: "added",
+      };
+    }
+  } catch (error) {
+    console.error("Toggle wishlist error:", error);
+    return { success: false, message: "Failed to toggle wishlist item" };
+  }
+}
+
 export async function moveToWishlist(input: {
   userId: string;
   productId: number;
@@ -143,7 +209,7 @@ export async function getFilteredWishlistItems(userId: string) {
       sizeName: sizes.name,
       categoryId: products.categoryId,
       subcategoryId: products.subcategoryId,
-      createdAt: wishlistItems.createdAt
+      createdAt: wishlistItems.createdAt,
     })
     .from(wishlistItems)
     .innerJoin(products, eq(wishlistItems.productId, products.id))
@@ -175,7 +241,7 @@ export type WishlistItemDetail = {
   colorName: string;
   sizeId: number;
   sizeName: string;
-  createdAt:Date |null;
+  createdAt: Date | null;
   discounts: DiscountType[];
 };
 
@@ -208,8 +274,39 @@ export const getWishlistItems = async (
       colorName: item.colorName,
       sizeId: item.sizeId,
       sizeName: item.sizeName,
-      createdAt:item.createdAt,
+      createdAt: item.createdAt,
       discounts: applicable,
     };
   });
+};
+
+export const getWishListCount = async (userId: string): Promise<number> => {
+  if (!userId) return 0;
+
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(wishlistItems)
+    .where(eq(wishlistItems.userId, userId))
+    .then((rows) => rows[0]?.count ?? 0);
+
+  return Number(result);
+};
+
+export const getWishListByProductId = async (
+  userId: string,
+  productId: number
+): Promise<number[]> => {
+  if (!userId) return [];
+
+  const rows = await db
+    .select({ productVariantId: wishlistItems.productVariantId })
+    .from(wishlistItems)
+    .where(
+      and(
+        eq(wishlistItems.productId, productId),
+        eq(wishlistItems.userId, userId)
+      )
+    );
+
+  return rows.map((r) => r.productVariantId);
 };
