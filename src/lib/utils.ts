@@ -167,10 +167,18 @@ export const getBestDiscountValue = (
     if (discount.type === "percentage") {
       const discountAmount = (price * discount.value) / 100;
       discountedPrice = price - discountAmount;
-      text = `${discount.value}% off - Buy ${discount.minQuantity}+`;
+      if (discount.minQuantity == 1) {
+        text = `${discount.value}% off `;
+      } else {
+        text = `${discount.value}% off - Buy ${discount.minQuantity}+`;
+      }
     } else if (discount.type === "amount") {
       discountedPrice = (price * quantity - discount.value) / quantity;
-      text = `₹${discount.value} off - Buy ${discount.minQuantity}+`;
+      if (discount.minQuantity == 1) {
+        text = `₹${discount.value} off `;
+      } else {
+        text = `₹${discount.value} off - Buy ${discount.minQuantity}+`;
+      }
     }
 
     if (discountedPrice < lowestPrice) {

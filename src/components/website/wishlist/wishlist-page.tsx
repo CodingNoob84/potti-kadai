@@ -13,18 +13,14 @@ export const WishlistClientPage = () => {
   const { data: session, isPending: isSessionPending } = useSession();
   const user = session?.user;
 
-  const {
-    data: items,
-    isLoading: isWishlistLoading,
-    isFetching,
-  } = useQuery({
+  const { data: items, isLoading: isWishlistLoading } = useQuery({
     queryKey: ["wishlistitems", user?.id],
     queryFn: () => getWishlistItems(user?.id as string),
     enabled: !!user?.id,
   });
 
   // Show loading state if either session is loading or wishlist is loading
-  if (isSessionPending || isWishlistLoading || isFetching) {
+  if (isSessionPending || isWishlistLoading) {
     return <WishlistLoading />;
   }
 

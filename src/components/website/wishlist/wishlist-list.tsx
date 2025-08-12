@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { getBestDiscountValue } from "@/lib/utils";
 import { addToCart, CartItemDetail } from "@/server/cart";
-import { WishlistItemDetail } from "@/server/wishlist";
+import { deleteWishlistitem, WishlistItemDetail } from "@/server/wishlist";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -42,12 +42,51 @@ export const WishlistItemsList = ({
     null
   );
   const [isProcessing, setIsProcessing] = useState(false);
+  console.log("wishlistItems", wishlistItems);
+
+  const deleteWishlistItem = useMutation({
+    mutationFn: deleteWishlistitem, // your API function
+
+    onMutate: async (wishlistItemId: number) => {
+      await queryClient.cancelQueries({
+        queryKey: ["wishlistitems", userId],
+      });
+
+      const previousWishlist = queryClient.getQueryData([
+        "wishlistitems",
+        userId,
+      ]);
+
+      queryClient.setQueryData(
+        ["wishlistitems", userId],
+        (old: WishlistItemDetail[] = []) =>
+          old.filter((item) => item.wishlistItemId !== wishlistItemId)
+      );
+
+      return { previousWishlist };
+    },
+
+    onError: (err, input, context) => {
+      if (context?.previousWishlist) {
+        queryClient.setQueryData(
+          ["wishlistitems", userId],
+          context.previousWishlist
+        );
+      }
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["wishlistitems", userId],
+      });
+    },
+  });
 
   const handleRemoveFromWishlist = async (wishlistItemId: number) => {
     console.log("wishlistItemId", wishlistItemId);
     try {
       setIsProcessing(true);
-      //await onRemoveItem(wishlistItemId);
+      deleteWishlistItem.mutate(wishlistItemId);
       toast.success("Item removed from wishlist");
     } catch (error) {
       console.log("error", error);
@@ -355,7 +394,7 @@ export const WishlistItemsList = ({
                         <Button
                           onClick={() => handleAddToCart(item)}
                           //disabled={!isAvailable || isProcessing}
-                          className={`w-full ${
+                          className={`w-full cursor-pointer ${
                             isAvailable ? "bg-primary hover:bg-primary/90" : ""
                           }`}
                           aria-label={
@@ -375,6 +414,16 @@ export const WishlistItemsList = ({
                               Notify When Available
                             </>
                           )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full hover:bg-destructive/30 cursor-pointer"
+                          onClick={() =>
+                            handleRemoveFromWishlist(item.wishlistItemId)
+                          }
+                        >
+                          <Heart className="h-4 w-4 mr-2 fill-red-500 text-red-500" />
+                          Remove from Wishlist
                         </Button>
                       </div>
                     </CardContent>

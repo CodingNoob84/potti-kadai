@@ -483,20 +483,10 @@ export const ProductSelection = ({
                     ? "border-primary bg-primary text-white"
                     : isAvailable
                     ? "border-gray-200 hover:border-gray-300 bg-white"
-                    : ""
+                    : "border-gray-200 bg-gray-100 text-gray-400 "
                 }`}
               >
                 {sizeLabel}
-                {isAvailable && size.quantity <= 5 && (
-                  <span className="block text-xs text-orange-500">
-                    Only {size.quantity} left
-                  </span>
-                )}
-                {!isAvailable && (
-                  <span className="block text-xs text-red-500">
-                    Out of stock
-                  </span>
-                )}
               </motion.button>
             );
           })}

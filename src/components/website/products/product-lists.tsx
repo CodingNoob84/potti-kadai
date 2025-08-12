@@ -1,10 +1,12 @@
 "use client";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getDiscounts } from "@/lib/utils";
+import { getBestDiscountValue, getDiscounts } from "@/lib/utils";
 import { getProductFilters } from "@/server/products";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, Frown, Star } from "lucide-react";
+import { motion } from "framer-motion";
+import { Bell, Eye, Frown, Star } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -130,19 +132,29 @@ export const ProductLists = ({
     console.log("datalength", products?.length);
     return (
       <div className="lg:col-span-3">
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <Frown className="h-12 w-12 text-yellow-500 mb-4" />
-          <h3 className="text-lg font-medium mb-2">
-            No products available under this category
+        <motion.div
+          className="flex flex-col items-center justify-center py-16 text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="relative mb-6">
+            <div className="w-24 h-24 bg-gradient-to-br from-primary/20 to-primary/5 rounded-full flex items-center justify-center">
+              <Frown className="h-12 w-12 text-primary/60" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-bold mb-3 text-gray-800">
+            No products found
           </h3>
-          <p className="text-muted-foreground text-sm mb-4">
-            We couldn&apos;t find any products matching your filters
+          <p className="text-muted-foreground text-lg mb-6 max-w-md">
+            We couldn&apos;t find any products matching your filters. Try
+            adjusting your search criteria.
           </p>
-          <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+          <Button className="bg-primary hover:bg-primary/90 text-white px-6 py-3">
             <Bell className="h-4 w-4 mr-2" />
             Notify me when available
-          </button>
-        </div>
+          </Button>
+        </motion.div>
       </div>
     );
   }
@@ -150,110 +162,204 @@ export const ProductLists = ({
   return (
     <div className="lg:col-span-3">
       {viewMode === "grid" ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {products.map((product) => {
-            const { discountedPrice, discountedText } = getDiscounts(
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {products.map((product, index) => {
+            const { discountedPrice, discountedText } = getBestDiscountValue(
               product.discounts,
-              product.price
+              product.price,
+              1
             );
+            console.log("-->", discountedPrice, discountedText);
+            const isDiscounted = discountedPrice !== product.price;
+            //const isWishlisted = wishlistItems.includes(product.id)
+
             return (
-              <Link key={product.id} href={`/products/${product.id}`}>
-                <Card className="group cursor-pointer hover:shadow-lg transition-shadow pt-0 border-0 shadow-sm">
-                  <CardContent className="p-0">
-                    <div className="relative aspect-square overflow-hidden rounded-t-lg">
-                      <Image
-                        src={product.images[0] || "/placeholder.svg"}
-                        alt={product.name}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                      />
-                      {product.price > discountedPrice && (
-                        <Badge className="absolute top-2 left-2 bg-red-500 hover:bg-red-600">
-                          {discountedText}
-                        </Badge>
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="group"
+              >
+                <Card className="h-full overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
+                  <CardContent className="p-0 relative">
+                    <div className="relative aspect-square overflow-hidden">
+                      <Link href={`/products/${product.id}`}>
+                        <Image
+                          src={product.images[0] || "/placeholder.svg"}
+                          alt={product.name}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-500"
+                          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        />
+                      </Link>
+
+                      {/* Discount Badge */}
+                      {isDiscounted && (
+                        <motion.div
+                          initial={{ scale: 0, rotate: -12 }}
+                          animate={{ scale: 1, rotate: -12 }}
+                          transition={{
+                            delay: 0.2,
+                            type: "spring",
+                            stiffness: 500,
+                          }}
+                        >
+                          <Badge className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold px-2 py-1 text-xs shadow-lg">
+                            {discountedText}
+                          </Badge>
+                        </motion.div>
                       )}
+
+                      {/* Quick Actions */}
+                      <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 w-8 p-0 bg-white/90 hover:bg-white shadow-lg"
+                        >
+                          <Eye className="h-4 w-4 text-gray-600" />
+                        </Button>
+                      </div>
                     </div>
+
                     <div className="p-4">
-                      <h3 className="font-semibold text-sm md:text-base mb-2 line-clamp-2">
-                        {product.name}
-                      </h3>
-                      <div className="flex items-center mb-2">
+                      <Link href={`/products/${product.id}`}>
+                        <h3 className="font-semibold text-sm md:text-base mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                          {product.name}
+                        </h3>
+                      </Link>
+
+                      <div className="flex items-center mb-3">
                         <div className="flex items-center">
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm text-muted-foreground ml-1">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-3 w-3 ${
+                                i < Math.floor(product.avgRating)
+                                  ? "fill-yellow-400 text-yellow-400"
+                                  : "text-gray-300"
+                              }`}
+                            />
+                          ))}
+                          <span className="text-xs text-muted-foreground ml-2">
                             {product.avgRating} ({product.reviewCount})
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-bold text-lg">
-                          ₹{discountedPrice.toFixed(2)}
-                        </span>
-                        {product.price > discountedPrice && (
-                          <span className="text-sm text-muted-foreground line-through">
-                            ₹{product.price}
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-lg text-primary">
+                            ₹{Math.round(discountedPrice)}
+                          </span>
+                          {isDiscounted && (
+                            <span className="text-sm text-muted-foreground line-through">
+                              ₹{product.price}
+                            </span>
+                          )}
+                        </div>
+                        {isDiscounted && (
+                          <span className="text-xs text-green-600 font-medium">
+                            Save ₹{Math.round(product.price - discountedPrice)}
                           </span>
                         )}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              </Link>
+              </motion.div>
             );
           })}
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {products.map((product) => {
+          {products.map((product, index) => {
             const { discountedPrice, discountedText } = getDiscounts(
               product.discounts,
               product.price
             );
+            const isDiscounted = discountedPrice !== product.price;
+            //const isWishlisted = wishlistItems.includes(product.id)
+
             return (
-              <Link key={product.id} href={`/products/${product.id}`}>
-                <Card className="group cursor-pointer hover:shadow-lg transition-shadow shadow-sm">
-                  <CardContent className="p-4">
-                    <div className="flex space-x-4">
-                      <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden">
-                        <Image
-                          src={product.images[0] || "/placeholder.svg"}
-                          alt={product.name}
-                          fill
-                          className="object-cover"
-                          sizes="100px"
-                        />
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+              >
+                <Card className="group cursor-pointer hover:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm border-0 shadow-md">
+                  <CardContent className="p-6">
+                    <div className="flex space-x-6">
+                      <div className="relative w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden">
+                        <Link href={`/products/${product.id}`}>
+                          <Image
+                            src={product.images[0] || "/placeholder.svg"}
+                            alt={product.name}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            sizes="128px"
+                          />
+                        </Link>
+                        {isDiscounted && (
+                          <Badge className="absolute top-2 left-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs">
+                            {discountedText}
+                          </Badge>
+                        )}
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg mb-2">
-                          {product.name}
-                        </h3>
-                        <div className="flex items-center mb-2">
-                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm text-muted-foreground ml-1">
-                            {product.avgRating} ({product.reviewCount} reviews)
-                          </span>
-                          {product.price > discountedPrice && (
-                            <Badge className="ml-3 bg-red-500 hover:bg-red-600">
-                              {discountedText}
-                            </Badge>
-                          )}
+
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div>
+                          <Link href={`/products/${product.id}`}>
+                            <h3 className="font-bold text-xl mb-2 group-hover:text-primary transition-colors">
+                              {product.name}
+                            </h3>
+                          </Link>
+
+                          <div className="flex items-center mb-3">
+                            <div className="flex items-center">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-4 w-4 ${
+                                    i < Math.floor(product.avgRating)
+                                      ? "fill-yellow-400 text-yellow-400"
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              ))}
+                              <span className="text-sm text-muted-foreground ml-2">
+                                {product.avgRating} ({product.reviewCount}{" "}
+                                reviews)
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-bold text-xl">
-                            ₹{discountedPrice.toFixed(2)}
-                          </span>
-                          {product.price > discountedPrice && (
-                            <span className="text-sm text-muted-foreground line-through">
-                              ₹{product.price}
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-2xl text-primary">
+                              ₹{Math.round(discountedPrice)}
                             </span>
-                          )}
+                            {isDiscounted && (
+                              <>
+                                <span className="text-lg text-muted-foreground line-through">
+                                  ₹{product.price}
+                                </span>
+                                <span className="text-sm text-green-600 font-medium bg-green-50 px-2 py-1 rounded">
+                                  Save ₹
+                                  {Math.round(product.price - discountedPrice)}
+                                </span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              </Link>
+              </motion.div>
             );
           })}
         </div>

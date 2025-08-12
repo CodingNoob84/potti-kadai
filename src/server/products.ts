@@ -787,6 +787,8 @@ export const getProductFilters = async (filters: ProductFilterParams) => {
     imageMap.get(img.productId)!.push(img.url);
   });
 
+  const discounts = await fetchAllDiscounts();
+
   // Final structure
   const result = paginatedProducts.map((p) => ({
     id: p.id,
@@ -795,7 +797,7 @@ export const getProductFilters = async (filters: ProductFilterParams) => {
     avgRating: p.avgRating ?? 0,
     reviewCount: p.reviewCount ?? 0,
     images: imageMap.get(p.id) || [],
-    discounts: [], // TODO: hook up discounts if needed
+    discounts: discounts, // TODO: hook up discounts if needed
   }));
 
   return {

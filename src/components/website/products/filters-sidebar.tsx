@@ -8,7 +8,8 @@ import {
 } from "@/server/categories";
 import { getColorsUsedInVariants } from "@/server/products";
 import { useQuery } from "@tanstack/react-query";
-import { Star } from "lucide-react";
+import { motion } from "framer-motion";
+import { Palette, Star, Tag, Tags, Users } from "lucide-react";
 
 type GenderFilterProps = {
   selectedGenders: number[];
@@ -49,27 +50,32 @@ export const GenderFilter = ({
   }
 
   return (
-    <div>
-      <div className="space-y-3 pl-1">
-        {genders?.map((gender) => (
-          <div key={gender.id} className="flex items-center space-x-3">
-            <Checkbox
-              id={gender.id.toString()}
-              checked={selectedGenders.includes(gender.id)}
-              onCheckedChange={(checked: boolean) =>
-                handleGenderChange(gender.id, checked)
-              }
-              className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary"
-            />
-            <Label
-              htmlFor={gender.id.toString()}
-              className="capitalize text-sm font-medium text-gray-700"
-            >
-              {gender.name}
-            </Label>
-          </div>
-        ))}
-      </div>
+    <div className="space-y-3">
+      {genders?.map((gender, index) => (
+        <motion.div
+          key={gender.id}
+          className="flex items-center space-x-3 group"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: index * 0.1 }}
+        >
+          <Checkbox
+            id={gender.id.toString()}
+            checked={selectedGenders.includes(gender.id)}
+            onCheckedChange={(checked: boolean) =>
+              handleGenderChange(gender.id, checked)
+            }
+            className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary data-[state=checked]:bg-primary transition-all duration-200"
+          />
+          <Label
+            htmlFor={gender.id.toString()}
+            className="capitalize text-sm font-medium text-gray-700 group-hover:text-primary transition-colors cursor-pointer flex items-center gap-2"
+          >
+            <Users className="h-4 w-4 opacity-60" />
+            {gender.name}
+          </Label>
+        </motion.div>
+      ))}
     </div>
   );
 };
@@ -108,28 +114,32 @@ export const CategoryFilter = ({
     );
   }
   return (
-    <div>
-      <div className="space-y-3 pl-1">
-        {categories &&
-          categories.map((category) => (
-            <div key={category.id} className="flex items-center space-x-3">
-              <Checkbox
-                id={category.id.toString()}
-                checked={selectedCategories.includes(category.id)}
-                onCheckedChange={(checked: boolean) =>
-                  handleCategoryChange(category.id, checked as boolean)
-                }
-                className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary"
-              />
-              <Label
-                htmlFor={category.id.toString()}
-                className="capitalize text-sm font-medium text-gray-700"
-              >
-                {category.name.replace(/([A-Z])/g, " $1").trim()}
-              </Label>
-            </div>
-          ))}
-      </div>
+    <div className="space-y-3">
+      {categories?.map((category, index) => (
+        <motion.div
+          key={category.id}
+          className="flex items-center space-x-3 group"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: index * 0.1 }}
+        >
+          <Checkbox
+            id={category.id.toString()}
+            checked={selectedCategories.includes(category.id)}
+            onCheckedChange={(checked: boolean) =>
+              handleCategoryChange(category.id, checked as boolean)
+            }
+            className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary data-[state=checked]:bg-primary transition-all duration-200"
+          />
+          <Label
+            htmlFor={category.id.toString()}
+            className="capitalize text-sm font-medium text-gray-700 group-hover:text-primary transition-colors cursor-pointer flex items-center gap-2"
+          >
+            <Tags className="h-4 w-4 opacity-60" />
+            {category.name.replace(/([A-Z])/g, " $1").trim()}
+          </Label>
+        </motion.div>
+      ))}
     </div>
   );
 };
@@ -181,30 +191,37 @@ export const SubCategoryFilter = ({
   );
 
   return (
-    <div>
-      <div className="space-y-3 pl-1">
-        {filteredSubcategories.map((subcategory) => (
-          <div key={subcategory.id} className="flex items-center space-x-3">
-            <Checkbox
-              id={subcategory.id.toString()}
-              checked={selectedSubCategories.includes(subcategory.id)}
-              onCheckedChange={(checked: boolean) =>
-                handleSubCategoryChange(subcategory.id, checked as boolean)
-              }
-              className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary"
-            />
-            <Label
-              htmlFor={subcategory.id.toString()}
-              className="capitalize text-sm font-medium text-gray-700"
-            >
-              {subcategory.name.replace(/([A-Z])/g, " $1").trim()}
-            </Label>
-          </div>
-        ))}
-        {filteredSubcategories.length === 0 && (
-          <p className="text-sm text-gray-500">No subcategories available.</p>
-        )}
-      </div>
+    <div className="space-y-3">
+      {filteredSubcategories.map((subcategory, index) => (
+        <motion.div
+          key={subcategory.id}
+          className="flex items-center space-x-3 group"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: index * 0.1 }}
+        >
+          <Checkbox
+            id={subcategory.id.toString()}
+            checked={selectedSubCategories.includes(subcategory.id)}
+            onCheckedChange={(checked: boolean) =>
+              handleSubCategoryChange(subcategory.id, checked as boolean)
+            }
+            className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary data-[state=checked]:bg-primary transition-all duration-200"
+          />
+          <Label
+            htmlFor={subcategory.id.toString()}
+            className="capitalize text-sm font-medium text-gray-700 group-hover:text-primary transition-colors cursor-pointer"
+          >
+            <Tag className="h-4 w-4 opacity-60" />
+            {subcategory.name.replace(/([A-Z])/g, " $1").trim()}
+          </Label>
+        </motion.div>
+      ))}
+      {filteredSubcategories.length === 0 && (
+        <p className="text-sm text-gray-500 italic">
+          No subcategories available.
+        </p>
+      )}
     </div>
   );
 };
@@ -243,28 +260,32 @@ export const ColorsFilter = ({
     );
   }
   return (
-    <div>
-      <div className="space-y-3 pl-1">
-        {colors &&
-          colors.map((color) => (
-            <div key={color.id} className="flex items-center space-x-3">
-              <Checkbox
-                id={color.id.toString()}
-                checked={selectedColors.includes(color.id)}
-                onCheckedChange={(checked: boolean) =>
-                  handleColorChange(color.id, checked as boolean)
-                }
-                className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary"
-              />
-              <Label
-                htmlFor={color.id.toString()}
-                className="capitalize text-sm font-medium text-gray-700"
-              >
-                {color.name}
-              </Label>
-            </div>
-          ))}
-      </div>
+    <div className="space-y-3">
+      {colors?.map((color, index) => (
+        <motion.div
+          key={color.id}
+          className="flex items-center space-x-3 group"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: index * 0.1 }}
+        >
+          <Checkbox
+            id={color.id.toString()}
+            checked={selectedColors.includes(color.id)}
+            onCheckedChange={(checked: boolean) =>
+              handleColorChange(color.id, checked as boolean)
+            }
+            className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary data-[state=checked]:bg-primary transition-all duration-200"
+          />
+          <Label
+            htmlFor={color.id.toString()}
+            className="capitalize text-sm font-medium text-gray-700 group-hover:text-primary transition-colors cursor-pointer flex items-center gap-2"
+          >
+            <Palette className="h-4 w-4 opacity-60" />
+            {color.name}
+          </Label>
+        </motion.div>
+      ))}
     </div>
   );
 };
@@ -296,28 +317,43 @@ export const PriceFilter = ({
   );
 
   return (
-    <div className="grid grid-cols-1 gap-2">
-      {PRICE_FILTER_OPTIONS.map((option) => (
-        <Button
+    <div className="space-y-3">
+      {PRICE_FILTER_OPTIONS.map((option, index) => (
+        <motion.div
           key={option.label}
-          variant={isOptionSelected(option.value) ? "default" : "outline"}
-          size="sm"
-          className="h-9 text-xs sm:text-sm justify-start"
-          onClick={() => setPriceRange(option.value)}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: index * 0.1 }}
         >
-          {option.label}
-        </Button>
+          <Button
+            variant={isOptionSelected(option.value) ? "default" : "outline"}
+            size="sm"
+            className={`w-full h-10 text-sm justify-start transition-all duration-200 ${
+              isOptionSelected(option.value)
+                ? "bg-primary text-white shadow-md"
+                : "hover:bg-primary/5 hover:border-primary/50"
+            }`}
+            onClick={() => setPriceRange(option.value)}
+          >
+            {option.label}
+          </Button>
+        </motion.div>
       ))}
-
       {isFilterActive && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9 text-xs sm:text-sm justify-start text-red-500"
-          onClick={() => setPriceRange(DEFAULT_RANGE)}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
         >
-          Remove Filter
-        </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full h-10 text-sm justify-start text-red-500 border-red-200 hover:bg-red-50 hover:border-red-300 bg-transparent"
+            onClick={() => setPriceRange(DEFAULT_RANGE)}
+          >
+            Remove Filter
+          </Button>
+        </motion.div>
       )}
     </div>
   );
@@ -346,29 +382,40 @@ export const RatingsFilter = ({
 
   return (
     <div className="space-y-3">
-      {RATING_OPTIONS.map((rating) => (
-        <div key={rating} className="flex items-center space-x-2">
+      {RATING_OPTIONS.map((rating, index) => (
+        <motion.div
+          key={rating}
+          className="flex items-center space-x-3 group"
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: index * 0.1 }}
+        >
           <Checkbox
             id={`rating-${rating}`}
             checked={selectedRatings.includes(rating)}
             onCheckedChange={(checked) =>
               handleChange(rating, checked as boolean)
             }
-            className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary"
+            className="h-5 w-5 border-2 border-gray-300 data-[state=checked]:border-primary data-[state=checked]:bg-primary transition-all duration-200"
           />
           <Label
             htmlFor={`rating-${rating}`}
-            className="flex items-center text-sm font-medium text-gray-700 cursor-pointer"
+            className="flex items-center text-sm font-medium text-gray-700 cursor-pointer group-hover:text-primary transition-colors"
           >
-            {[...Array(rating)].map((_, i) => (
-              <Star key={`filled-${i}`} className="w-4 h-4 text-yellow-400" />
-            ))}
-            {[...Array(5 - rating)].map((_, i) => (
-              <Star key={`empty-${i}`} className="w-4 h-4 text-gray-300" />
-            ))}
-            <span className="ml-1">& up</span>
+            <div className="flex items-center mr-2">
+              {[...Array(rating)].map((_, i) => (
+                <Star
+                  key={`filled-${i}`}
+                  className="w-4 h-4 text-yellow-400 fill-yellow-400"
+                />
+              ))}
+              {[...Array(5 - rating)].map((_, i) => (
+                <Star key={`empty-${i}`} className="w-4 h-4 text-gray-300" />
+              ))}
+            </div>
+            <span className="text-gray-600">& up</span>
           </Label>
-        </div>
+        </motion.div>
       ))}
     </div>
   );

@@ -59,6 +59,23 @@ export async function removeFromWishlist(input: {
   }
 }
 
+export async function deleteWishlistitem(wishlistItemid: number) {
+  try {
+    const result = await db
+      .delete(wishlistItems)
+      .where(eq(wishlistItems.id, wishlistItemid)); // Assuming wishlistItems table has an `id` primary key column
+
+    if (result.rowCount === 0) {
+      return { success: false, message: "Item not found in wishlist" };
+    }
+
+    return { success: true, message: "Item removed from wishlist" };
+  } catch (error) {
+    console.error("Remove from wishlist error:", error);
+    return { success: false, message: "Failed to remove item from wishlist" };
+  }
+}
+
 export async function toggleWishlist(input: {
   userId: string;
   productId: number;

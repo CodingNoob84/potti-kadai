@@ -2,31 +2,54 @@
 
 import { AddressBlock } from "@/components/website/checkout/address";
 import { CheckoutLoading } from "@/components/website/checkout/checkout-loading";
-import { EmptyCheckOut } from "@/components/website/checkout/empty-checkout";
 import { OrderSummary } from "@/components/website/checkout/order-summary";
 import { PaymentMethods } from "@/components/website/checkout/payments";
 import { useSession } from "@/lib/auth-client";
 import { getCartTotalItems } from "@/server/cart";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export const CheckOutClientPage = () => {
+  const router = useRouter();
   const [addressId, setAddressId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const { data: session, isPending: isSessionLoading } = useSession();
-  const user = session?.user;
-  const { data: items, isLoading: isCartLoading } = useQuery({
-    queryKey: ["cartitems", user?.id],
-    queryFn: () => getCartTotalItems(user?.id as string),
-    enabled: !!user?.id,
+  const userId = session?.user?.id;
+
+  const {
+    data: items,
+    isLoading: isCartLoading,
+    isFetched: isCartFetched,
+  } = useQuery({
+    queryKey: ["cartitems-count", userId],
+    queryFn: () => getCartTotalItems(userId as string),
+    enabled: !!userId,
   });
 
-  if (isSessionLoading || isCartLoading) {
+  // Show loading until we've verified cart has items
+  const isLoading = isSessionLoading || isCartLoading || !isCartFetched;
+  const isEmptyCart = isCartFetched && (!items || items === 0);
+
+  // Redirect if cart is empty after data loaded
+  useEffect(() => {
+    if (isEmptyCart) {
+      router.push("/");
+    }
+  }, [isEmptyCart, router]);
+
+  if (isLoading) {
     return <CheckoutLoading />;
   }
 
-  if (!items || items === 0) {
-    return <EmptyCheckOut />;
+  if (!userId) {
+    // Optionally handle missing user session here, e.g. redirect to login
+    return null;
+  }
+
+  if (isEmptyCart) {
+    // While redirecting, show loading
+    return <CheckoutLoading />;
   }
 
   return (
@@ -36,7 +59,7 @@ export const CheckOutClientPage = () => {
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <AddressBlock
-            userId={user?.id as string}
+            userId={userId}
             addressId={addressId}
             setAddressId={setAddressId}
           />
@@ -46,7 +69,7 @@ export const CheckOutClientPage = () => {
           />
         </div>
         <OrderSummary
-          userId={user?.id as string}
+          userId={userId}
           addressId={addressId}
           paymentMethod={paymentMethod}
         />

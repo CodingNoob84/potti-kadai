@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { getCheckOutItems, placeOrder } from "@/server/cart";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle,
   CreditCard,
@@ -39,6 +39,7 @@ export const OrderSummary = ({
   addressId: string;
   paymentMethod: string;
 }) => {
+  const queryClient = useQueryClient();
   const { data: items, isLoading } = useQuery({
     queryKey: ["cartitems-checkout", userId],
     queryFn: () => getCheckOutItems(userId as string),
@@ -62,6 +63,10 @@ export const OrderSummary = ({
       if (data.success) {
         setNewOrderId(data.orderId?.toString() as string);
         setOrderStatus({ success: true });
+        queryClient.invalidateQueries({ queryKey: ["cartitems", userId] });
+        queryClient.invalidateQueries({
+          queryKey: ["cartitems-count", userId],
+        });
       } else {
         setOrderStatus({
           success: false,
