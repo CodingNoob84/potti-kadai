@@ -19,7 +19,7 @@ import {
   Smartphone,
   XCircle,
 } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { OrderItemsDetails } from "./order-items";
 import { PromoCodeSection } from "./promocode";
@@ -39,6 +39,7 @@ export const OrderSummary = ({
   addressId: string;
   paymentMethod: string;
 }) => {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { data: items, isLoading } = useQuery({
     queryKey: ["cartitems-checkout", userId],
@@ -67,6 +68,7 @@ export const OrderSummary = ({
         queryClient.invalidateQueries({
           queryKey: ["cartitems-count", userId],
         });
+        router.push(`/payment-receipt?orderid=${data.orderId}`);
       } else {
         setOrderStatus({
           success: false,
@@ -219,18 +221,14 @@ export const OrderSummary = ({
               Order Placed Successfully!
             </h3>
             <p className="text-muted-foreground mb-6">
-              Your order #{newOrderId} has been confirmed. We&apos;ve sent a
-              confirmation email with all the details.
+              Your order #{newOrderId} has been confirmed.
             </p>
-            <div className="flex gap-3 w-full">
-              <Button asChild variant="outline" className="flex-1">
-                <Link href="/">Continue Shopping</Link>
-              </Button>
-              <Button asChild className="flex-1">
-                <Link href={`/payment-receipt?orderid=${newOrderId}`}>
-                  View Order
-                </Link>
-              </Button>
+
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">
+                Preparing your receipt...
+              </p>
             </div>
           </div>
         </DialogContent>

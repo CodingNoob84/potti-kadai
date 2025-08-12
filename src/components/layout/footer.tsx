@@ -10,6 +10,7 @@ import {
   Youtube,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 // Animation variants
 const containerVariants = {
@@ -48,6 +49,11 @@ const newsletterVariants = {
 };
 
 export default function Footer() {
+  const [year, setYear] = useState("");
+
+  useEffect(() => {
+    setYear(new Date().getFullYear().toString());
+  }, []);
   return (
     <motion.footer
       className="bg-primary/10 border-t border-primary/20"
@@ -244,14 +250,11 @@ export default function Footer() {
           className="border-t border-primary/20 mt-12 pt-8 text-center text-muted-foreground"
           variants={itemVariants}
         >
-          <p>
-            &copy; {new Date().getFullYear()} PottiKadai. All rights reserved.
-          </p>
+          <p>&copy; {year} PottiKadai. All rights reserved.</p>
           <div className="flex justify-center space-x-4 mt-2">
             {[
               { href: "/privacy", label: "Privacy Policy" },
               { href: "/terms", label: "Terms of Service" },
-              { href: "/cookies", label: "Cookie Policy" },
             ].map((link) => (
               <motion.div
                 key={link.href}

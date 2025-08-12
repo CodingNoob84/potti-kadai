@@ -10,6 +10,7 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updated_at").notNull(),
   isAnonymous: boolean("is_anonymous").default(false),
   role: text("role").notNull().default("user"),
+  phone: text("phone"),
 });
 
 export const session = pgTable("session", {

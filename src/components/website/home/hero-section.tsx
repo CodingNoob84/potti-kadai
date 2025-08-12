@@ -160,7 +160,7 @@ export const HeroSection = () => {
 
   return (
     <section
-      className="relative h-[600px] sm:h-[500px] md:h-[700px] bg-gradient-to-b from-primary/5 to-white overflow-hidden"
+      className="relative h-[600px] sm:h-[500px] md:h-[700px] bg-gradient-to-b from-primary/5 to-white overflow-hidden pb-32"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -213,7 +213,7 @@ export const HeroSection = () => {
 
                 <motion.h1
                   variants={itemVariants}
-                  className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight"
+                  className=" px-8 sm:px-0 text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight"
                 >
                   <span className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                     {currentSlideData.title}

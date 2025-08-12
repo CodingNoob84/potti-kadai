@@ -13,7 +13,7 @@ import {
   TAX_PERCENTAGE,
 } from "@/lib/contants";
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import {
   DiscountMapValue,
   fetchAllDiscounts,
@@ -188,7 +188,7 @@ export async function getFilteredCartItems(userId: string) {
       sizeName: sizes.name,
       categoryId: products.categoryId,
       subcategoryId: products.subcategoryId,
-      createdAt:cartItems.createdAt,
+      createdAt: cartItems.createdAt,
     })
     .from(cartItems)
     .innerJoin(products, eq(cartItems.productId, products.id))
@@ -222,7 +222,7 @@ export type CartItemDetail = {
   colorName: string;
   sizeId: number;
   sizeName: string;
-  createdAt:Date|null;
+  createdAt: Date | null;
   discounts: DiscountType[];
 };
 
@@ -268,7 +268,7 @@ export const getCartItems = async (
       colorName: item.colorName,
       sizeId: item.sizeId,
       sizeName: item.sizeName,
-      createdAt:item.createdAt,
+      createdAt: item.createdAt,
       discounts: applicable,
     };
   });
@@ -580,7 +580,6 @@ export async function getOrderDetails({ orderId }: { orderId: number }) {
   }
 }
 
-
 export type OrderResponse = {
   id: string;
   orderNumber: string;
@@ -608,7 +607,9 @@ export type OrderResponse = {
   paymentMethod: string;
 };
 
-export const getAllOrders = async (userId: string): Promise<OrderResponse[]> => {
+export const getAllOrders = async (
+  userId: string
+): Promise<OrderResponse[]> => {
   // 1. Get all orders for the user
   const rawOrders = await db
     .select({
@@ -621,11 +622,13 @@ export const getAllOrders = async (userId: string): Promise<OrderResponse[]> => 
       addressId: orders.addressId,
     })
     .from(orders)
-    .where(eq(orders.userId, userId));
+    .where(eq(orders.userId, userId))
+    .orderBy(desc(orders.createdAt))
+    .limit(5);
 
   if (!rawOrders.length) return [];
 
-  const orderIds = rawOrders.map(o => o.orderNumber);
+  const orderIds = rawOrders.map((o) => o.orderNumber);
 
   // 2. Get all items for these orders
   const itemsRaw = await db
@@ -642,12 +645,15 @@ export const getAllOrders = async (userId: string): Promise<OrderResponse[]> => 
     })
     .from(orderItems)
     .innerJoin(products, eq(orderItems.productId, products.id))
-    .leftJoin(productVariants, eq(orderItems.productVariantId, productVariants.id))
+    .leftJoin(
+      productVariants,
+      eq(orderItems.productVariantId, productVariants.id)
+    )
     .leftJoin(sizes, eq(productVariants.sizeId, sizes.id))
     .leftJoin(colors, eq(productVariants.colorId, colors.id))
     .where(inArray(orderItems.orderId, orderIds));
 
-  const productIds = [...new Set(itemsRaw.map(i => i.productId))];
+  const productIds = [...new Set(itemsRaw.map((i) => i.productId))];
 
   // 3. Get all product images
   const productAllImages = await db
@@ -672,7 +678,7 @@ export const getAllOrders = async (userId: string): Promise<OrderResponse[]> => 
     "/placeholder.svg?height=80&width=80";
 
   // 4. Get all addresses
-  const addressIds = [...new Set(rawOrders.map(o => o.addressId))];
+  const addressIds = [...new Set(rawOrders.map((o) => o.addressId))];
   const addresses = await db
     .select({
       id: userAddresses.id,
@@ -686,7 +692,7 @@ export const getAllOrders = async (userId: string): Promise<OrderResponse[]> => 
     .leftJoin(user, eq(userAddresses.userId, user.id))
     .where(inArray(userAddresses.id, addressIds));
 
-  const addressMap = Object.fromEntries(addresses.map(a => [a.id, a]));
+  const addressMap = Object.fromEntries(addresses.map((a) => [a.id, a]));
 
   // 5. Get all shipments
   const shipmentsData = await db
@@ -698,13 +704,15 @@ export const getAllOrders = async (userId: string): Promise<OrderResponse[]> => 
     .from(shipments)
     .where(inArray(shipments.orderId, orderIds));
 
-  const shipmentMap = Object.fromEntries(shipmentsData.map(s => [s.orderId, s]));
+  const shipmentMap = Object.fromEntries(
+    shipmentsData.map((s) => [s.orderId, s])
+  );
 
   // 6. Stitch together
-  return rawOrders.map(order => {
+  return rawOrders.map((order) => {
     const orderItemsList = itemsRaw
-      .filter(item => item.orderId === order.orderNumber)
-      .map(item => ({
+      .filter((item) => item.orderId === order.orderNumber)
+      .map((item) => ({
         id: item.id,
         name: item.name ?? "",
         price: Number(item.price),
@@ -714,11 +722,19 @@ export const getAllOrders = async (userId: string): Promise<OrderResponse[]> => 
         colorName: item.colorName ?? "N/A",
       }));
 
-    const addr = addressMap[order.addressId] || { name: "", address: "", city: "", state: "", pincode: "" };
+    const addr = addressMap[order.addressId] || {
+      name: "",
+      address: "",
+      city: "",
+      state: "",
+      pincode: "",
+    };
     const ship = shipmentMap[order.orderNumber] || {};
 
     return {
-      id: `ORD-${new Date(order.date ?? new Date()).getFullYear()}-${String(order.orderNumber).padStart(3, "0")}`,
+      id: `ORD-${new Date(order.date ?? new Date()).getFullYear()}-${String(
+        order.orderNumber
+      ).padStart(3, "0")}`,
       orderNumber: String(order.orderNumber),
       date: order.date ? order.date.toISOString().split("T")[0] : "",
       status: order.status,
@@ -740,5 +756,51 @@ export const getAllOrders = async (userId: string): Promise<OrderResponse[]> => 
   });
 };
 
+export async function clearAllCartItemsForAllUsers() {
+  try {
+    // Start a transaction
+    await db.transaction(async (tx) => {
+      // 1. Fetch all cart items with their variant IDs and quantities
+      const allCartItems = await tx
+        .select({
+          productVariantId: cartItems.productVariantId,
+          quantity: cartItems.quantity,
+        })
+        .from(cartItems);
 
+      if (allCartItems.length === 0) {
+        console.log("No cart items found to clear");
+        return;
+      }
 
+      // 2. Group quantities by variant ID for more efficient updates
+      const variantQuantities = new Map<number, number>();
+      for (const item of allCartItems) {
+        const current =
+          variantQuantities.get(item.productVariantId as number) || 0;
+        variantQuantities.set(item.productVariantId, current + item.quantity);
+      }
+
+      // 3. Update product variants in batch
+      for (const [variantId, quantity] of variantQuantities.entries()) {
+        await tx
+          .update(productVariants)
+          .set({
+            quantity: sql`${productVariants.quantity} + ${quantity}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(productVariants.id, variantId));
+      }
+
+      // 4. Delete all cart items
+      await tx.delete(cartItems).where(isNotNull(cartItems.id)); // More explicit than whereTrue()
+
+      console.log(
+        `Successfully cleared ${allCartItems.length} cart items and restored stock`
+      );
+    });
+  } catch (error) {
+    console.error("Failed to clear cart items:", error);
+    throw new Error("Failed to clear cart items. Changes were rolled back.");
+  }
+}

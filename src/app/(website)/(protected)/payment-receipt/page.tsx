@@ -8,7 +8,7 @@ import { getOrderDetails } from "@/server/cart";
 import { useQuery } from "@tanstack/react-query";
 import { Download, Loader2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 
 export default function PaymentReceipt() {
@@ -16,12 +16,17 @@ export default function PaymentReceipt() {
   const rawOrderId = searchParams.get("orderid");
   const orderId = rawOrderId ? parseInt(rawOrderId) : null;
 
+  // Scroll to top on component mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
   const { data, isLoading } = useQuery({
     queryKey: ["order", orderId],
     queryFn: () => getOrderDetails({ orderId: orderId as number }),
     enabled: !!orderId,
   });
-  console.log("-->", data);
+
   const contentRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
@@ -33,6 +38,10 @@ export default function PaymentReceipt() {
         .no-print { display: none !important; }
       }
     `,
+    onAfterPrint: () => {
+      // Scroll back to top after printing
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
   });
 
   if (isLoading) {
@@ -89,6 +98,7 @@ export default function PaymentReceipt() {
           Download Receipt
         </Button>
       </div>
+
       <div ref={contentRef}>
         <ReceiptBlock {...data} />
       </div>

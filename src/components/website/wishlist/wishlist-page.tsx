@@ -43,7 +43,7 @@ export const WishlistClientPage = () => {
   );
 
   return (
-    <div className="min-h-screen">
+    <div className="">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

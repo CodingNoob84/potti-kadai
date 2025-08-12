@@ -80,7 +80,7 @@ export const TrendingSection = () => {
   };
 
   return (
-    <section className="py-16 sm:py-20 px-4 sm:px-6 bg-gradient-to-b from-white via-green-50 to-green-100 relative overflow-hidden">
+    <section className="py-16 sm:py-20 px-4 sm:px-6 bg-gradient-to-b from-white via-green-50 to-green-150 relative overflow-hidden">
       {/* subtle overlay */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-green-100/30 via-white/60 to-white/30" />
 
@@ -199,10 +199,10 @@ const ProductCard = ({
         className="group block"
         aria-label={`View details for ${product.name}`}
       >
-        <Card className="h-full overflow-hidden border-2 shadow-xl hover:shadow-lg transition-shadow duration-300 bg-white/90 backdrop-blur-sm">
+        <Card className="h-full p-0 overflow-hidden border-2 shadow-xl hover:shadow-lg transition-shadow duration-300 bg-white/90 backdrop-blur-sm">
           <CardContent className="p-0 flex flex-col h-full">
             {/* Image Container */}
-            <div className="relative aspect-square overflow-hidden bg-green-50">
+            <div className="relative aspect-square overflow-hidden bg-primary/30">
               <Image
                 src={mainImage || "/placeholder.svg"}
                 alt={product.name}

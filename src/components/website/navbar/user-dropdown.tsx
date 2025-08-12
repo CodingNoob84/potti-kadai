@@ -36,7 +36,7 @@ export const UserDropdown = () => {
           ) : (
             <Avatar className="h-8 w-8">
               <AvatarImage
-                src={user?.image || "/images/auth/no-avatar.png"}
+                src={user?.image || "/images/auth/no-avatar.jpg"}
                 alt={user?.name || "User"}
               />
               <AvatarFallback>

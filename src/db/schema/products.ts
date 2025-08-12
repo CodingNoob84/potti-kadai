@@ -55,6 +55,9 @@ export const productVariants = pgTable("product_variants", {
     .references(() => colors.id, { onDelete: "set null" })
     .notNull(),
   quantity: integer("quantity").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const productGenders = pgTable("product_genders", {

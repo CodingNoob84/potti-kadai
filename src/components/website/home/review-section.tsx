@@ -1,9 +1,7 @@
 "use client";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
-import { motion } from "framer-motion";
-import { Quote, Star } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { motion, useAnimation, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 
 const reviews = [
@@ -67,155 +65,380 @@ const reviews = [
     product: "Kurta Pajama",
     location: "Kochi",
   },
+  {
+    id: 7,
+    name: "Sneha Iyer",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 5,
+    review:
+      "Absolutely love my saree! The color and design are stunning. The fabric feels premium and comfortable.",
+    product: "Silk Saree",
+    location: "Chennai",
+  },
+  {
+    id: 8,
+    name: "Rohit Mehta",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 4,
+    review:
+      "Quick delivery and well-packaged. The hoodie is warm, soft, and exactly what I needed for winter.",
+    product: "Winter Hoodie",
+    location: "Pune",
+  },
+  {
+    id: 9,
+    name: "Kavya Menon",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 5,
+    review:
+      "The lehenga I purchased was gorgeous and perfect for my cousin’s wedding. Everyone complimented me!",
+    product: "Designer Lehenga",
+    location: "Trivandrum",
+  },
+  {
+    id: 10,
+    name: "Amit Verma",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 4,
+    review:
+      "Good product quality and great value for money. The polo t-shirt fits perfectly and looks classy.",
+    product: "Polo T-Shirt",
+    location: "Jaipur",
+  },
+  {
+    id: 11,
+    name: "Neha Joshi",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 5,
+    review:
+      "Impressed with the detailing on the embroidered kurti. Looks elegant and feels comfortable all day.",
+    product: "Embroidered Kurti",
+    location: "Nagpur",
+  },
+  {
+    id: 12,
+    name: "Suresh Rathi",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 5,
+    review:
+      "Bought a pair of formal trousers and they are excellent quality. Great fit and durable stitching.",
+    product: "Formal Trousers",
+    location: "Lucknow",
+  },
+  {
+    id: 13,
+    name: "Pooja Desai",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 4,
+    review:
+      "Nice fabric and pattern on the kurta. The delivery was a day late, but overall a good experience.",
+    product: "Printed Kurta",
+    location: "Surat",
+  },
+  {
+    id: 14,
+    name: "Manoj Gupta",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 5,
+    review:
+      "The jacket I ordered exceeded my expectations. Stylish, warm, and worth every penny.",
+    product: "Casual Jacket",
+    location: "Indore",
+  },
+  {
+    id: 15,
+    name: "Divya Kapoor",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 5,
+    review:
+      "PottiKadai always delivers quality! The maxi dress I ordered is perfect for summer outings.",
+    product: "Maxi Dress",
+    location: "Gurgaon",
+  },
+  {
+    id: 16,
+    name: "Harish Chandra",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 4,
+    review:
+      "Good range of casual wear at affordable prices. The cargo pants I bought are very comfortable.",
+    product: "Cargo Pants",
+    location: "Patna",
+  },
+  {
+    id: 17,
+    name: "Ritika Bansal",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 5,
+    review:
+      "Loved the anarkali suit! Beautiful color combination and perfect for festive occasions.",
+    product: "Anarkali Suit",
+    location: "Amritsar",
+  },
+  {
+    id: 18,
+    name: "Anil Yadav",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 4,
+    review:
+      "Bought sportswear for my gym sessions. Breathable fabric and comfortable fit. Happy with the purchase.",
+    product: "Sportswear Set",
+    location: "Noida",
+  },
+  {
+    id: 19,
+    name: "Shweta Rao",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 5,
+    review:
+      "Very happy with my dupatta order. Vibrant colors and soft texture. Matches perfectly with my suit.",
+    product: "Chiffon Dupatta",
+    location: "Bhopal",
+  },
+  {
+    id: 20,
+    name: "Karan Malhotra",
+    avatar: "/placeholder.svg?height=40&width=40",
+    rating: 5,
+    review:
+      "Excellent store for online clothing! I’ve ordered multiple times and the experience is always top-notch.",
+    product: "Casual Shirt",
+    location: "Chandigarh",
+  },
 ];
 
-export const ReviewsSection = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isHovered, setIsHovered] = useState(false);
+export const TestimonialsSection = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
+  const row1Controls = useAnimation();
+  const row2Controls = useAnimation();
 
   useEffect(() => {
-    if (!isHovered) {
-      const interval = setInterval(() => {
-        setCurrentIndex((prev) => (prev + 1) % reviews.length);
-      }, 2000);
-      return () => clearInterval(interval);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const getDuration = (baseDuration: number) => {
+    if (prefersReducedMotion) return baseDuration * 3;
+    return isMobile ? baseDuration * 0.6 : baseDuration;
+  };
+
+  // Start animations
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+
+    row1Controls.start({
+      x: ["0%", "-50%"],
+      transition: {
+        duration: getDuration(30),
+        repeat: Infinity,
+        ease: "linear",
+      },
+    });
+
+    row2Controls.start({
+      x: ["-50%", "0%"],
+      transition: {
+        duration: getDuration(35),
+        repeat: Infinity,
+        ease: "linear",
+      },
+    });
+  }, [isMobile, prefersReducedMotion, row1Controls, row2Controls, getDuration]);
+
+  const handleHoverStart = (isRow1: boolean) => {
+    if (prefersReducedMotion) return;
+
+    if (isMobile) {
+      // On mobile, center the hovered card
+      if (isRow1) {
+        row1Controls.stop();
+      } else {
+        row2Controls.stop();
+      }
+    } else {
+      // On desktop, just pause the animation
+      if (isRow1) {
+        row1Controls.stop();
+      } else {
+        row2Controls.stop();
+      }
     }
-  }, [isHovered, reviews.length]);
+  };
+
+  const handleHoverEnd = (isRow1: boolean) => {
+    if (prefersReducedMotion) return;
+
+    if (isRow1) {
+      row1Controls.start({
+        x: ["0%", "-50%"],
+        transition: {
+          duration: getDuration(30),
+          repeat: Infinity,
+          ease: "linear",
+        },
+      });
+    } else {
+      row2Controls.start({
+        x: ["-50%", "0%"],
+        transition: {
+          duration: getDuration(35),
+          repeat: Infinity,
+          ease: "linear",
+        },
+      });
+    }
+  };
 
   return (
-    <section className="py-20 px-4 md:px-6 lg:px-8 bg-gradient-to-br from-primary/5 via-white to-primary/10 relative overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(120,119,198,0.1),transparent_50%)]" />
-
-      <div className="max-w-7xl mx-auto relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
+    <section className="py-12 overflow-hidden bg-gradient-to-b from-gray-50 to-primary/30">
+      <div className="container mx-auto px-4">
+        <motion.h2
+          className="text-3xl font-bold text-center mb-12"
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
         >
-          <motion.h2
-            className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text text-transparent"
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
-            What Our Customers Say
-          </motion.h2>
-          <motion.p
-            className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            Don&apos;t just take our word for it - hear from our happy customers
-          </motion.p>
-        </motion.div>
+          What Our Customers Say
+        </motion.h2>
 
-        <div
-          className="relative overflow-hidden"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
-          <div className="relative h-[300px] w-full overflow-hidden">
-            <motion.div
-              className="flex absolute top-0 left-0 h-full w-full"
-              style={{ width: `${reviews.length * 100}%` }}
-              animate={{
-                x: `-${currentIndex * (100 / reviews.length)}%`,
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 100,
-                damping: 20,
-              }}
-            >
-              {reviews.map((review) => (
-                <motion.div
-                  key={review.id}
-                  className="w-full h-full"
-                  style={{ width: `${100 / reviews.length}%` }}
-                >
-                  <Card className="h-full bg-white/70 backdrop-blur-sm border-white/20 shadow-lg hover:shadow-xl transition-all duration-300">
-                    <CardContent className="p-8 relative h-full flex flex-col">
-                      {/* Quote Icon */}
-                      <Quote className="absolute top-4 right-4 h-8 w-8 text-primary/20" />
-
-                      {/* Rating */}
-                      <div className="flex items-center mb-4">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-5 w-5 ${
-                              i < review.rating
-                                ? "text-yellow-400 fill-yellow-400"
-                                : "text-gray-300"
-                            }`}
-                          />
-                        ))}
-                      </div>
-
-                      {/* Review Text */}
-                      <p className="text-foreground leading-relaxed text-lg flex-grow">
-                        &quot;{review.review}&quot;
-                      </p>
-
-                      {/* Product Info */}
-                      <div className="mb-4">
-                        <span className="text-sm text-primary font-medium bg-primary/10 px-3 py-1 rounded-full">
-                          {review.product}
-                        </span>
-                      </div>
-
-                      {/* Customer Info */}
-                      <div className="flex items-center">
-                        <Avatar className="h-12 w-12 mr-4">
-                          <AvatarImage
-                            src={review.avatar || "/placeholder.svg"}
-                            alt={review.name}
-                          />
-                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                            {review.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h4 className="font-semibold text-foreground">
-                            {review.name}
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            {review.location}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-
-          {/* Navigation Dots */}
-          <div className="flex justify-center mt-8 space-x-2">
-            {reviews.map((_, index) => (
-              <button
-                key={index}
-                className={`h-3 w-3 rounded-full transition-all duration-300 ${
-                  index === currentIndex
-                    ? "bg-primary w-8"
-                    : "bg-primary/30 hover:bg-primary/50"
-                }`}
-                onClick={() => setCurrentIndex(index)}
-              />
+        {/* First row - moves left to right */}
+        <div className="mb-8 overflow-hidden">
+          <motion.div className="flex" animate={row1Controls}>
+            {[...reviews, ...reviews].map((review, index) => (
+              <div
+                key={`row1-${index}`}
+                className="flex-shrink-0 px-4 w-[280px] md:w-80"
+                onMouseEnter={() => handleHoverStart(true)}
+                onMouseLeave={() => handleHoverEnd(true)}
+                onTouchStart={() => handleHoverStart(true)}
+                onTouchEnd={() => handleHoverEnd(true)}
+              >
+                <TestimonialCard {...review} isMobile={isMobile} />
+              </div>
             ))}
-          </div>
+          </motion.div>
+        </div>
+
+        {/* Second row - moves right to left */}
+        <div className="overflow-hidden">
+          <motion.div className="flex" animate={row2Controls}>
+            {[...reviews.slice().reverse(), ...reviews.slice().reverse()].map(
+              (review, index) => (
+                <div
+                  key={`row2-${index}`}
+                  className="flex-shrink-0 px-4 w-[280px] md:w-80"
+                  onMouseEnter={() => handleHoverStart(false)}
+                  onMouseLeave={() => handleHoverEnd(false)}
+                  onTouchStart={() => handleHoverStart(false)}
+                  onTouchEnd={() => handleHoverEnd(false)}
+                >
+                  <TestimonialCard {...review} isMobile={isMobile} />
+                </div>
+              )
+            )}
+          </motion.div>
         </div>
       </div>
     </section>
+  );
+};
+
+const TestimonialCard = ({
+  name,
+  review,
+  avatar,
+  rating,
+  product,
+  location,
+  isMobile,
+}: (typeof reviews)[0] & { isMobile: boolean }) => {
+  const prefersReducedMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      whileHover={
+        prefersReducedMotion
+          ? {}
+          : {
+              y: isMobile ? 0 : -5,
+              scale: isMobile ? 1.05 : 1,
+              boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+              zIndex: 10,
+            }
+      }
+      transition={{ duration: 0.3 }}
+      className={isMobile ? "origin-center" : ""}
+    >
+      <Card className="h-full">
+        <CardHeader className="flex flex-row items-center space-x-4 pb-2">
+          <motion.div
+            whileHover={prefersReducedMotion ? {} : { scale: 1.1 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Avatar>
+              <AvatarImage src={avatar} />
+              <AvatarFallback>{name[0]}</AvatarFallback>
+            </Avatar>
+          </motion.div>
+          <div>
+            <h3 className="font-medium">{name}</h3>
+            <p className="text-sm text-muted-foreground">{location}</p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <motion.p
+            className="mb-4 italic"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            &quot;{review}&quot;
+          </motion.p>
+          <div className="flex justify-between items-center">
+            <div className="flex">
+              {[...Array(5)].map((_, i) => (
+                <StarIcon key={i} filled={i < rating} />
+              ))}
+            </div>
+            <motion.span
+              className="text-sm text-muted-foreground"
+              whileHover={prefersReducedMotion ? {} : { scale: 1.05 }}
+            >
+              {product}
+            </motion.span>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+};
+
+const StarIcon = ({ filled }: { filled: boolean }) => {
+  const prefersReducedMotion = useReducedMotion();
+
+  return (
+    <motion.svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      className="w-5 h-5 text-yellow-500"
+      whileHover={prefersReducedMotion ? {} : { scale: 1.2 }}
+      transition={{ duration: 0.2 }}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={filled ? 0 : 2}
+        d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+      />
+    </motion.svg>
   );
 };
