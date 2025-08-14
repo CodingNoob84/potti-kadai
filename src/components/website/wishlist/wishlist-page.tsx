@@ -71,19 +71,33 @@ export const WishlistClientPage = () => {
             </motion.div>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-6 text-sm text-gray-600">
-              <span className="font-medium">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 sm:px-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 text-sm">
+              {/* Items count - emphasized on mobile */}
+              <span className="font-medium text-base sm:text-sm text-gray-800 sm:text-gray-600">
                 {items?.length} {items?.length === 1 ? "item" : "items"} saved
               </span>
-              <span className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                {availableCount} available
-              </span>
-              <span className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                {unavailableCount} out of stock
-              </span>
+
+              {/* Status indicators - now in a row on mobile, better spacing */}
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                {/* Available count */}
+                <span className="flex items-center gap-2 text-gray-700 sm:text-gray-600">
+                  <div className="w-2.5 h-2.5 bg-green-500 rounded-full flex-shrink-0"></div>
+                  <span>
+                    <span className="">Available: </span>
+                    {availableCount}
+                  </span>
+                </span>
+
+                {/* Out of stock count */}
+                <span className="flex items-center gap-2 text-gray-700 sm:text-gray-600">
+                  <div className="w-2.5 h-2.5 bg-red-500 rounded-full flex-shrink-0"></div>
+                  <span>
+                    <span className="">Out of stock: </span>
+                    {unavailableCount}
+                  </span>
+                </span>
+              </div>
             </div>
           </div>
         </motion.div>

@@ -37,6 +37,8 @@ export const SignUpForm = () => {
         email: data.email,
         password: data.password,
         name: `${data.firstName} ${data.lastName}`,
+        role: "user",
+        phone: "",
         callbackURL: "/",
       },
       {

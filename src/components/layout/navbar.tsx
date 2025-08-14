@@ -18,6 +18,7 @@ import {
   ShirtIcon as TShirt,
   Zap,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { CartButton } from "../website/cart/cart-button"; // Assuming this component handles its own animation/count
@@ -156,9 +157,20 @@ export default function Navbar() {
       {/* Main Navbar */}
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="font-bold text-2xl text-primary">PottiKadai</div>
+        <Link href="/" className="flex items-center">
+          <div className="relative w-16 h-10">
+            <Image
+              src="/images/logos/potti-kadai-vandi.png"
+              alt="Potti Kadai Logo"
+              fill
+              className="object-contain"
+            />
+          </div>
+          <span className="ml-1 text-3xl font-bold text-green-900">
+            PottiKadai
+          </span>
         </Link>
+
         {/* Search Bar - Hidden on mobile */}
         {/* <div className="hidden md:flex flex-1 max-w-md mx-8">
           <div className="relative w-full">

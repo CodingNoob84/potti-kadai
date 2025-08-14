@@ -95,3 +95,32 @@ export const getAllUserAddresses = async ({ userId }: { userId: string }) => {
     throw new Error("Unable to fetch user addresses");
   }
 };
+
+type UpdateUserParams = {
+  id: string;
+  name: string;
+  phone: string | null;
+};
+
+export const updateUser = async ({ id, name, phone }: UpdateUserParams) => {
+  try {
+    const [updatedUser] = await db
+      .update(user)
+      .set({
+        name,
+        phone,
+        updatedAt: new Date(), // Always update the timestamp
+      })
+      .where(eq(user.id, id))
+      .returning();
+
+    if (!updatedUser) {
+      throw new Error("User not found or update failed");
+    }
+
+    return updatedUser;
+  } catch (error) {
+    console.error("Failed to update user:", error);
+    throw error; // Re-throw to let the caller handle it
+  }
+};

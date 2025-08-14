@@ -64,102 +64,100 @@ export const OrdersClientPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-secondary/5">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="container max-w-7xl mx-auto px-4 py-8"
+    >
+      {/* Header */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="container max-w-7xl mx-auto px-4 py-8"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
       >
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-primary rounded-xl">
-              <Package className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-              My Orders
-            </h1>
-            <motion.div
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{
-                duration: 2,
-                repeat: Number.POSITIVE_INFINITY,
-                repeatDelay: 3,
-              }}
-            >
-              <Sparkles className="h-5 w-5 text-yellow-500" />
-            </motion.div>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 bg-primary rounded-xl">
+            <Package className="h-6 w-6 text-primary-foreground" />
           </div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+            My Orders
+          </h1>
+          <motion.div
+            animate={{ rotate: [0, 10, -10, 0] }}
+            transition={{
+              duration: 2,
+              repeat: Number.POSITIVE_INFINITY,
+              repeatDelay: 3,
+            }}
+          >
+            <Sparkles className="h-5 w-5 text-yellow-500" />
+          </motion.div>
+        </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <p className="text-gray-600">
-              {filteredOrders?.length}{" "}
-              {filteredOrders?.length === 1 ? "order" : "orders"} found
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <p className="text-gray-600">
+            {filteredOrders?.length}{" "}
+            {filteredOrders?.length === 1 ? "order" : "orders"} found
+          </p>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2 bg-transparent"
-                >
-                  <Filter className="h-4 w-4" />
-                  Filters
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup
-                  value={statusFilter}
-                  onValueChange={setStatusFilter}
-                >
-                  {statusOptions.map((option) => (
-                    <DropdownMenuRadioItem
-                      key={option.value}
-                      value={option.value}
-                    >
-                      {option.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 bg-transparent"
+              >
+                <Filter className="h-4 w-4" />
+                Filters
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+              >
+                {statusOptions.map((option) => (
+                  <DropdownMenuRadioItem
+                    key={option.value}
+                    value={option.value}
+                  >
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
 
-                <DropdownMenuSeparator />
+              <DropdownMenuSeparator />
 
-                <DropdownMenuLabel>Filter by Time Period</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup
-                  value={dateFilter}
-                  onValueChange={setDateFilter}
-                >
-                  {dateOptions.map((option) => (
-                    <DropdownMenuRadioItem
-                      key={option.value}
-                      value={option.value}
-                    >
-                      {option.label}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </motion.div>
-
-        <div className="grid lg:grid-cols-1 gap-8">
-          {" "}
-          {/* Changed to 1 column as filters are in dropdown */}
-          <div className="lg:col-span-1">
-            <OrdersList orders={filteredOrders} />
-          </div>
+              <DropdownMenuLabel>Filter by Time Period</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup
+                value={dateFilter}
+                onValueChange={setDateFilter}
+              >
+                {dateOptions.map((option) => (
+                  <DropdownMenuRadioItem
+                    key={option.value}
+                    value={option.value}
+                  >
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </motion.div>
-    </div>
+
+      <div className="grid lg:grid-cols-1 gap-8">
+        {" "}
+        {/* Changed to 1 column as filters are in dropdown */}
+        <div className="lg:col-span-1">
+          <OrdersList orders={filteredOrders} />
+        </div>
+      </div>
+    </motion.div>
   );
 };

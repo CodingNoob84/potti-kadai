@@ -6,9 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSession } from "@/lib/auth-client";
+import { updateUser } from "@/server/users";
+import { useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Edit, Mail, Phone, Save, User, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 type User = {
@@ -18,71 +20,92 @@ type User = {
   email: string;
   createdAt: Date;
   updatedAt: Date;
-  image?: string | null | undefined | undefined;
+  image?: string | null;
   role: string;
   phone: string | null;
 };
 
 export const ProfileSection = () => {
-  const { data: session, isPending: isSessionPending } = useSession();
-  const user = session?.user as User;
+  const { data: session, isPending: isSessionPending, refetch } = useSession();
+  const [user, setUser] = useState<User | null>(null);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedUser, setEditedUser] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    phone: user?.phone || "",
+    name: "",
+    email: "",
+    phone: "",
   });
-  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSaveProfile = async () => {
-    try {
-      setIsSaving(true);
+  useEffect(() => {
+    if (session?.user) {
+      setUser(session.user as User);
+      setEditedUser({
+        name: session.user.name || "",
+        email: session.user.email || "",
+        phone: session.user.phone || "",
+      });
+    }
+  }, [session]);
 
-      // Validate fields
-      if (!editedUser.name.trim()) {
-        toast.error("Please enter your name");
-        return;
-      }
-
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editedUser.email)) {
-        toast.error("Please enter a valid email address");
-        return;
-      }
-
-      if (editedUser.phone && !/^[0-9]{10,15}$/.test(editedUser.phone)) {
-        toast.error("Please enter a valid phone number");
-        return;
-      }
-
-      // Here you would typically call your API to update the user
-      // await updateUserProfile(editedUser);
-
+  const updateMutation = useMutation({
+    mutationFn: updateUser,
+    onSuccess: async (updatedUser) => {
+      refetch();
+      setUser(updatedUser);
       toast.success("Profile updated successfully");
       setIsEditingProfile(false);
-    } catch (error) {
+    },
+    onError: (error) => {
       toast.error("Failed to update profile");
       console.error("Error updating profile:", error);
-    } finally {
-      setIsSaving(false);
+    },
+  });
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+
+    // Validate fields
+    if (!editedUser.name.trim()) {
+      toast.error("Please enter your name");
+      return;
     }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editedUser.email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    if (editedUser.phone && !/^[0-9]{10,15}$/.test(editedUser.phone)) {
+      toast.error("Please enter a valid phone number");
+      return;
+    }
+
+    updateMutation.mutate({
+      id: user.id,
+      name: editedUser.name,
+      phone: editedUser.phone,
+    });
   };
 
   const handleCancelEdit = () => {
-    setEditedUser({
-      name: user?.name || "",
-      email: user?.email || "",
-      phone: user?.phone || "",
-    });
+    if (user) {
+      setEditedUser({
+        name: user.name,
+        email: user.email,
+        phone: user.phone || "",
+      });
+    }
     setIsEditingProfile(false);
   };
 
   if (isSessionPending) {
-    return <div>Loading...</div>;
+    return <div className="flex justify-center p-8">Loading...</div>;
   }
 
   if (!user) {
-    return <div>No user data available</div>;
+    return (
+      <div className="flex justify-center p-8">No user data available</div>
+    );
   }
 
   return (
@@ -126,10 +149,10 @@ export const ProfileSection = () => {
                   size="sm"
                   onClick={handleSaveProfile}
                   className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
-                  disabled={isSaving}
+                  disabled={updateMutation.isPending}
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? "Saving..." : "Save Changes"}
+                  {updateMutation.isPending ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             )}
@@ -181,22 +204,9 @@ export const ProfileSection = () => {
                 <Mail className="h-4 w-4" />
                 Email Address
               </Label>
-              {isEditingProfile ? (
-                <Input
-                  id="email"
-                  type="email"
-                  value={editedUser.email}
-                  onChange={(e) =>
-                    setEditedUser({ ...editedUser, email: e.target.value })
-                  }
-                  placeholder="Enter your email"
-                  disabled // Typically email shouldn't be editable
-                />
-              ) : (
-                <div className="p-3 bg-muted/50 rounded-lg font-medium">
-                  {user.email}
-                </div>
-              )}
+              <div className="p-3 bg-muted/50 rounded-lg font-medium">
+                {user.email}
+              </div>
             </div>
 
             <div className="space-y-2">
