@@ -221,7 +221,7 @@ export const ProductSelection = ({
         setAvailableSizes(firstColor.sizes);
       }
     }
-  }, [product.inventory, setSelectedColorId]);
+  }, [product.inventory, selectedColorId, setSelectedColorId]);
 
   useEffect(() => {
     if (selectedColorId) {

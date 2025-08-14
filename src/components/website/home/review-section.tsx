@@ -2,7 +2,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { motion, useAnimation, useReducedMotion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const reviews = [
   {
@@ -223,12 +223,14 @@ export const TestimonialsSection = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  const getDuration = (baseDuration: number) => {
-    if (prefersReducedMotion) return baseDuration * 3;
-    return isMobile ? baseDuration * 0.6 : baseDuration;
-  };
+  const getDuration = useCallback(
+    (baseDuration: number) => {
+      if (prefersReducedMotion) return baseDuration * 3;
+      return isMobile ? baseDuration * 0.6 : baseDuration;
+    },
+    [isMobile, prefersReducedMotion] // dependencies that affect calculation
+  );
 
-  // Start animations
   useEffect(() => {
     if (prefersReducedMotion) return;
 
@@ -249,7 +251,7 @@ export const TestimonialsSection = () => {
         ease: "linear",
       },
     });
-  }, [isMobile, prefersReducedMotion, row1Controls, row2Controls, getDuration]);
+  }, [prefersReducedMotion, row1Controls, row2Controls, getDuration]);
 
   const handleHoverStart = (isRow1: boolean) => {
     if (prefersReducedMotion) return;
