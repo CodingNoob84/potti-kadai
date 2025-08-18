@@ -7,11 +7,11 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   BadgePercent,
   BarChart3,
   ChevronDown,
-  ChevronRight,
   Layers,
   LayoutDashboard,
   List,
@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 type MenuSubItem = {
   title: string;
@@ -66,33 +66,33 @@ const menuItems: MenuItem[] = [
       {
         title: "Categories",
         href: "/dashboard/products/categories",
-        icon: <Tags className="h-4 w-4" />, // or <Layers className="h-4 w-4" />
+        icon: <Tags className="h-4 w-4" />,
       },
       {
         title: "SubCategories",
         href: "/dashboard/products/subcategories",
-        icon: <Layers className="h-4 w-4" />, // or <Tag className="h-4 w-4" />
+        icon: <Layers className="h-4 w-4" />,
       },
       {
         title: "Sizes",
         href: "/dashboard/products/sizes",
-        icon: <Ruler className="h-4 w-4" />, // or <Size className="h-4 w-4" />
+        icon: <Ruler className="h-4 w-4" />,
       },
     ],
   },
   {
     title: "Offers",
-    icon: <BadgePercent className="h-4 w-4" />, // or <Megaphone className="h-4 w-4" />
+    icon: <BadgePercent className="h-4 w-4" />,
     submenu: [
       {
         title: "Discounts",
-        href: "/dashboard/discounts",
-        icon: <Tag className="h-4 w-4" />, // or <Sale className="h-4 w-4" />
+        href: "/dashboard/offers/discounts",
+        icon: <Tag className="h-4 w-4" />,
       },
       {
         title: "Promocodes",
-        href: "/dashboard/promocodes",
-        icon: <Ticket className="h-4 w-4" />, // or <TicketPercent className="h-4 w-4" />
+        href: "/dashboard/offers/promocodes",
+        icon: <Ticket className="h-4 w-4" />,
       },
     ],
   },
@@ -171,48 +171,88 @@ function SidebarContent({
                       variant={
                         isParentActive(item.submenu) ? "secondary" : "ghost"
                       }
-                      className="w-full justify-between px-3 py-2"
+                      className="w-full justify-between px-3 py-2 hover:bg-accent/50 transition-colors"
                     >
                       <div className="flex items-center space-x-3">
-                        <span>{item.icon}</span>
+                        <span className="text-muted-foreground">
+                          {item.icon}
+                        </span>
                         <span className="text-sm font-medium">
                           {item.title}
                         </span>
                       </div>
-                      {openMenus.includes(item.title) ? (
+                      <motion.span
+                        animate={{
+                          rotate: openMenus.includes(item.title) ? 0 : -90,
+                        }}
+                        transition={{ duration: 0.2 }}
+                      >
                         <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      )}
+                      </motion.span>
                     </Button>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="pl-4 mt-1 space-y-1">
-                    {item.submenu.map((sub) => (
-                      <Button
-                        key={sub.href}
-                        asChild
-                        variant={isActive(sub.href) ? "secondary" : "ghost"}
-                        className="w-full justify-start px-3 py-2 h-auto"
-                      >
-                        <Link
-                          href={sub.href}
-                          className="min-h-9 flex items-center"
+                  <AnimatePresence>
+                    {openMenus.includes(item.title) && (
+                      <CollapsibleContent asChild forceMount>
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{
+                            height: "auto",
+                            opacity: 1,
+                            transition: {
+                              height: { duration: 0.2 },
+                              opacity: { duration: 0.15, delay: 0.05 },
+                            },
+                          }}
+                          exit={{
+                            height: 0,
+                            opacity: 0,
+                            transition: {
+                              height: { duration: 0.2 },
+                              opacity: { duration: 0.1 },
+                            },
+                          }}
+                          className="overflow-hidden pl-4 mt-1 space-y-1"
                         >
-                          {sub.icon}
-                          <span className="ml-3 text-sm">{sub.title}</span>
-                        </Link>
-                      </Button>
-                    ))}
-                  </CollapsibleContent>
+                          {item.submenu.map((sub) => (
+                            <Button
+                              key={sub.href}
+                              asChild
+                              variant={
+                                isActive(sub.href) ? "secondary" : "ghost"
+                              }
+                              className="w-full justify-start px-3 py-2 h-auto hover:bg-accent/50"
+                            >
+                              <Link
+                                href={sub.href}
+                                className="min-h-9 flex items-center"
+                              >
+                                <span className="text-muted-foreground">
+                                  {sub.icon}
+                                </span>
+                                <motion.span
+                                  initial={{ x: -10 }}
+                                  animate={{ x: 0 }}
+                                  className="ml-3 text-sm"
+                                >
+                                  {sub.title}
+                                </motion.span>
+                              </Link>
+                            </Button>
+                          ))}
+                        </motion.div>
+                      </CollapsibleContent>
+                    )}
+                  </AnimatePresence>
                 </Collapsible>
               ) : (
                 <Button
                   asChild
                   variant={isActive(item.href!) ? "secondary" : "ghost"}
-                  className="w-full justify-start px-3 py-2"
+                  className="w-full justify-start px-3 py-2 hover:bg-accent/50"
                 >
                   <Link href={item.href!} className="min-h-9 flex items-center">
-                    {item.icon}
+                    <span className="text-muted-foreground">{item.icon}</span>
                     <span className="ml-3 text-sm font-medium">
                       {item.title}
                     </span>
@@ -229,24 +269,30 @@ function SidebarContent({
 
 export default function AdminSidebar() {
   const pathname = usePathname();
-  const [openMenus, setOpenMenus] = useState<string[]>([
-    "Products",
-    "Orders",
-    "Users",
-  ]);
+  const [openMenus, setOpenMenus] = useState<string[]>([]);
 
   const toggleMenu = (title: string) => {
-    setOpenMenus((prev) =>
-      prev.includes(title)
-        ? prev.filter((item) => item !== title)
-        : [...prev, title]
+    setOpenMenus(
+      (prev) =>
+        prev.includes(title) ? prev.filter((item) => item !== title) : [title] // Only keep the current menu open
     );
   };
+
+  // Auto-open parent menu if child is active
+  useEffect(() => {
+    const activeParent = menuItems.find(
+      (item) =>
+        item.submenu && item.submenu.some((sub) => pathname === sub.href)
+    );
+    if (activeParent && !openMenus.includes(activeParent.title)) {
+      setOpenMenus([activeParent.title]);
+    }
+  }, [pathname, openMenus]);
 
   return (
     <>
       {/* Mobile top bar with Sheet button */}
-      <div className="md:hidden ">
+      <div className="md:hidden">
         <SidebarContent
           pathname={pathname}
           openMenus={openMenus}

@@ -14,7 +14,7 @@ import { EmptyOrders } from "@/components/website/orders/empty-orders";
 import { OrdersList } from "@/components/website/orders/orders-list";
 import { OrdersLoading } from "@/components/website/orders/orders-loading";
 import { useSession } from "@/lib/auth-client";
-import { getAllOrders } from "@/server/cart";
+import { getAllUserOrders } from "@/server/cart";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Filter, Package, Sparkles } from "lucide-react";
@@ -26,7 +26,7 @@ export default function OrdersPage() {
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ["all-orders", user?.id],
-    queryFn: () => getAllOrders(user?.id as string),
+    queryFn: () => getAllUserOrders(user?.id as string),
     enabled: !!user?.id,
   });
   console.log("data", orders);

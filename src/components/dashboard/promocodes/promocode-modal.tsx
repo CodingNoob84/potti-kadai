@@ -1,5 +1,5 @@
 "use client";
-import { PromoCodeType } from "@/app/(dashboard)/dashboard/promocodes/page";
+import { PromoCodeType } from "@/app/(dashboard)/dashboard/offers/promocodes/page";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import {

@@ -607,7 +607,7 @@ export type OrderResponse = {
   paymentMethod: string;
 };
 
-export const getAllOrders = async (
+export const getAllUserOrders = async (
   userId: string
 ): Promise<OrderResponse[]> => {
   // 1. Get all orders for the user
@@ -804,3 +804,53 @@ export async function clearAllCartItemsForAllUsers() {
     throw new Error("Failed to clear cart items. Changes were rolled back.");
   }
 }
+
+export const getAllOrders = async ({
+  page = 1,
+  limit = 10,
+}: {
+  page?: number;
+  limit?: number;
+}) => {
+  try {
+    const offset = (page - 1) * limit;
+
+    // Fetch orders with user details
+    const rawOrders = await db
+      .select({
+        id: orders.orderId, // uuid
+        orderNumber: orders.id, // serial ID
+        date: orders.createdAt,
+        status: orders.status,
+        total: orders.finalAmount,
+        paymentMethod: orders.paymentMethod,
+        addressId: orders.addressId,
+        userId: orders.userId,
+        userName: user.name,
+        userEmail: user.email,
+      })
+      .from(orders)
+      .leftJoin(user, eq(orders.userId, user.id))
+      .orderBy(desc(orders.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    // Total count of orders
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(${orders.id})` })
+      .from(orders);
+
+    return {
+      data: rawOrders,
+      pagination: {
+        total: Number(count),
+        page,
+        limit,
+        totalPages: Math.ceil(Number(count) / limit),
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    throw new Error("Unable to fetch orders");
+  }
+};

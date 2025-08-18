@@ -1,9 +1,10 @@
 "use server";
 import { db } from "@/db/drizzle";
 import { user } from "@/db/schema/auth";
+import { orders } from "@/db/schema/cart";
 import { productReviews } from "@/db/schema/products";
 import { userAddresses } from "@/db/schema/user";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 
 export const getUserBots = async () => {
   const users = await db
@@ -205,4 +206,59 @@ export const updateUser = async ({ id, name, phone }: UpdateUserParams) => {
     console.error("Failed to update user:", error);
     throw error; // Re-throw to let the caller handle it
   }
+};
+
+export const getAllUsers = async ({
+  page = 1,
+  limit = 10,
+}: {
+  page: number;
+  limit: number;
+}) => {
+  const offset = (page - 1) * limit;
+
+  const usersWithOrders = await db
+    .select({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      createdAt: user.createdAt,
+      orderCount: sql<number>`COUNT(${orders.id})`.as("order_count"),
+      totalSpent: sql<number>`COALESCE(SUM(${orders.finalAmount}), 0)`.as(
+        "total_spent"
+      ),
+    })
+    .from(user)
+    .leftJoin(orders, sql`${user.id} = ${orders.userId}`)
+    .where(ne(user.role, "admin")) // 👈 exclude admins
+    .groupBy(user.id)
+    .orderBy(desc(user.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  // optional: total count of users (for pagination UI)
+  const [{ total }] = await db
+    .select({ total: sql<number>`COUNT(*)` })
+    .from(user);
+
+  return {
+    data: usersWithOrders,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
+export const getAllAdmins = async () => {
+  const admins = await db
+    .select()
+    .from(user)
+    .where(eq(user.role, "admin"))
+    .orderBy(desc(user.createdAt));
+
+  return admins;
 };
