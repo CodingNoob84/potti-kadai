@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
 
@@ -18,24 +18,7 @@ export function OrdersLoading() {
             <Skeleton className="h-8 w-48" />
           </div>
 
-          <div className="grid lg:grid-cols-4 gap-8">
-            {/* Filters Loading */}
-            <div className="lg:col-span-1">
-              <Card className="bg-primary/5">
-                <CardHeader>
-                  <Skeleton className="h-6 w-24" />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="flex items-center space-x-2">
-                      <Skeleton className="h-4 w-4 rounded" />
-                      <Skeleton className="h-4 w-20" />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-
+          <div>
             {/* Orders Loading */}
             <div className="lg:col-span-3 space-y-6">
               {[1, 2, 3].map((i) => (

@@ -36,6 +36,7 @@ const addressFormSchema = z.object({
   country: z.string().min(1, "Country is required"),
   pincode: z.string().min(1, "Pincode is required"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  isDefault: z.boolean().default(true),
 });
 
 type AddressFormValues = z.infer<typeof addressFormSchema>;
@@ -43,7 +44,7 @@ type AddressFormValues = z.infer<typeof addressFormSchema>;
 export const AddressForm = ({ userId }: { userId: string }) => {
   const queryClient = useQueryClient();
   const [showAddressForm, setShowAddressForm] = useState(false);
-  const form = useForm<AddressFormValues>({
+  const form = useForm({
     resolver: zodResolver(addressFormSchema),
     defaultValues: {
       firstName: "",
@@ -55,6 +56,7 @@ export const AddressForm = ({ userId }: { userId: string }) => {
       country: "India",
       pincode: "",
       phone: "",
+      isDefault: true,
     },
   });
 
@@ -73,14 +75,12 @@ export const AddressForm = ({ userId }: { userId: string }) => {
   const onSubmit = (data: AddressFormValues) => {
     console.log(data, userId);
     createUpdateAddressMutation.mutate({ id: 0, ...data, userId });
-
-    // Here you would typically handle form submission, e.g., API call
   };
 
   return (
     <Dialog open={showAddressForm} onOpenChange={setShowAddressForm}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full bg-transparent">
+        <Button className="w-full">
           <Plus className="h-4 w-4 mr-2" />
           Add New Address
         </Button>

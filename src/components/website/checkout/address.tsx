@@ -6,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAllUserAddresses } from "@/server/users";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { AddressForm } from "./address-form";
 
 export const AddressBlock = ({
@@ -21,7 +22,19 @@ export const AddressBlock = ({
     queryKey: ["user-addresses", userId],
     queryFn: () => getAllUserAddresses({ userId }),
   });
-  console.log("data", userAddresses);
+
+  // Auto-select default address if no addressId is set
+  useEffect(() => {
+    if (userAddresses && userAddresses.length > 0 && !addressId) {
+      const defaultAddress = userAddresses.find((a) => a.isDefault);
+      if (defaultAddress) {
+        setAddressId(defaultAddress.id.toString());
+      } else {
+        // fallback to first address if no default
+        setAddressId(userAddresses[0].id.toString());
+      }
+    }
+  }, [userAddresses, addressId, setAddressId]);
 
   if (isLoading) {
     return (

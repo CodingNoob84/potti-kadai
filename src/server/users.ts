@@ -48,6 +48,7 @@ type InputData = {
   pincode: string;
   phone: string;
   userId: string;
+  isDefault: boolean;
 };
 
 export const createUpdateAddress = async (inputData: InputData) => {
@@ -62,10 +63,18 @@ export const createUpdateAddress = async (inputData: InputData) => {
     country: inputData.country,
     pincode: inputData.pincode,
     phone: inputData.phone,
-    isDefault: false,
+    isDefault: inputData.isDefault ?? false,
   };
 
   try {
+    // If the new/updated address is default, make all other addresses non-default
+    if (inputData.isDefault) {
+      await db
+        .update(userAddresses)
+        .set({ isDefault: false })
+        .where(eq(userAddresses.userId, inputData.userId));
+    }
+
     if (inputData.id === 0) {
       // Insert new address
       await db.insert(userAddresses).values(commonData);
@@ -82,12 +91,85 @@ export const createUpdateAddress = async (inputData: InputData) => {
   }
 };
 
+export const setAddressDefault = async ({
+  userId,
+  userAddressId,
+}: {
+  userId: string;
+  userAddressId: number;
+}) => {
+  try {
+    // Step 1: Reset all addresses for this user
+    await db
+      .update(userAddresses)
+      .set({ isDefault: false })
+      .where(eq(userAddresses.userId, userId));
+
+    // Step 2: Set the selected address as default
+    await db
+      .update(userAddresses)
+      .set({ isDefault: true })
+      .where(
+        and(
+          eq(userAddresses.id, userAddressId),
+          eq(userAddresses.userId, userId) // ensures address belongs to user
+        )
+      );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to set default address:", error);
+    throw new Error("Failed to set default address");
+  }
+};
+
+export const deleteUserAddress = async ({
+  userId,
+  userAddressId,
+}: {
+  userId: string;
+  userAddressId: number;
+}) => {
+  try {
+    // Check if address exists and belongs to user
+    const [address] = await db
+      .select()
+      .from(userAddresses)
+      .where(
+        and(
+          eq(userAddresses.id, userAddressId),
+          eq(userAddresses.userId, userId)
+        )
+      );
+
+    if (!address) {
+      throw new Error("Address not found or does not belong to user");
+    }
+
+    // Delete the address
+    await db
+      .delete(userAddresses)
+      .where(
+        and(
+          eq(userAddresses.id, userAddressId),
+          eq(userAddresses.userId, userId)
+        )
+      );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete address:", error);
+    throw new Error("Failed to delete address");
+  }
+};
+
 export const getAllUserAddresses = async ({ userId }: { userId: string }) => {
   try {
     const addresses = await db
       .select()
       .from(userAddresses)
-      .where(eq(userAddresses.userId, userId));
+      .where(eq(userAddresses.userId, userId))
+      .orderBy(desc(userAddresses.id));
 
     return addresses;
   } catch (error) {
