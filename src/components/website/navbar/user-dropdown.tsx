@@ -80,7 +80,7 @@ export const UserDropdown = () => {
             <DropdownMenuItem asChild>
               <Link href="/wishlist">My Wishlist</Link>
             </DropdownMenuItem>
-            {user?.role === "user" && (
+            {(user?.role === "user" || user?.role === "superadmin") && (
               <DropdownMenuItem asChild>
                 <Link href="/dashboard">Admin Dashboard</Link>
               </DropdownMenuItem>

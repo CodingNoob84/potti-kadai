@@ -1,6 +1,6 @@
 "use client";
 
-import { backOut, easeOut, motion } from "framer-motion";
+import { easeOut, motion } from "framer-motion";
 import {
   Facebook,
   Instagram,
@@ -32,18 +32,6 @@ const itemVariants = {
     transition: {
       duration: 0.5,
       ease: easeOut,
-    },
-  },
-};
-
-const newsletterVariants = {
-  hidden: { scale: 0.95, opacity: 0 },
-  visible: {
-    scale: 1,
-    opacity: 1,
-    transition: {
-      duration: 0.5,
-      ease: backOut,
     },
   },
 };
@@ -103,9 +91,9 @@ export default function Footer() {
             </h3>
             <ul className="space-y-3">
               {[
-                { href: "/about", label: "About Us" },
-                { href: "/contact", label: "Contact Us" },
-                { href: "/shipping", label: "Shipping Info" },
+                { href: "/about-us", label: "About Us" },
+                { href: "/contact-us", label: "Contact Us" },
+                { href: "/shipping-info", label: "Shipping Info" },
                 { href: "/returns", label: "Returns & Exchanges" },
                 { href: "/size-guide", label: "Size Guide" },
               ].map((link) => (
@@ -168,10 +156,10 @@ export default function Footer() {
             </h3>
             <ul className="space-y-3">
               {[
-                { href: "/help", label: "Help Center" },
-                { href: "/track-order", label: "Track Your Order" },
-                { href: "/privacy", label: "Privacy Policy" },
-                { href: "/terms", label: "Terms of Service" },
+                { href: "/help-center", label: "Help Center" },
+                { href: "/track-your-order", label: "Track Your Order" },
+                { href: "/privacy-policy", label: "Privacy Policy" },
+                { href: "/terms-and-conditions", label: "Terms of Service" },
               ].map((link) => (
                 <motion.li key={link.href} variants={itemVariants}>
                   <Link
@@ -213,37 +201,6 @@ export default function Footer() {
             </ul>
           </motion.div>
         </div>
-
-        {/* Newsletter Subscription */}
-        <motion.div
-          className="mt-12 bg-white/50 p-6 rounded-lg shadow-sm max-w-2xl mx-auto"
-          variants={newsletterVariants}
-        >
-          <h3 className="text-lg font-semibold text-center mb-3 text-primary">
-            Subscribe to Our Newsletter
-          </h3>
-          <p className="text-muted-foreground text-center mb-4">
-            Get updates on new arrivals, special offers, and fashion tips.
-          </p>
-          <motion.div
-            className="flex flex-col sm:flex-row gap-2"
-            whileHover={{ scale: 1.01 }}
-          >
-            <motion.input
-              type="email"
-              placeholder="Your email address"
-              className="flex-grow px-4 py-2 border border-primary/20 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
-              whileFocus={{ scale: 1.02 }}
-            />
-            <motion.button
-              className="bg-primary text-white px-6 py-2 rounded-md hover:bg-primary/90 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Subscribe
-            </motion.button>
-          </motion.div>
-        </motion.div>
 
         {/* Copyright */}
         <motion.div

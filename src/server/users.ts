@@ -4,7 +4,7 @@ import { user } from "@/db/schema/auth";
 import { orders } from "@/db/schema/cart";
 import { productReviews } from "@/db/schema/products";
 import { userAddresses } from "@/db/schema/user";
-import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, notInArray, sql } from "drizzle-orm";
 
 export const getUserBots = async () => {
   const users = await db
@@ -231,7 +231,7 @@ export const getAllUsers = async ({
     })
     .from(user)
     .leftJoin(orders, sql`${user.id} = ${orders.userId}`)
-    .where(ne(user.role, "admin")) // 👈 exclude admins
+    .where(notInArray(user.role, ["admin", "superadmin"])) // 👈 exclude admins & superadmins
     .groupBy(user.id)
     .orderBy(desc(user.createdAt))
     .limit(limit)
