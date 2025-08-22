@@ -1,5 +1,5 @@
 import { addCronJobLog } from "@/server/cronjobs";
-import { seedCartItems } from "@/server/seeding";
+import { updateOrderStatus } from "@/server/seeding";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
@@ -12,13 +12,13 @@ export async function GET(req: Request) {
   const startTime = Date.now();
 
   try {
-    const result = await seedCartItems();
+    const result = await updateOrderStatus();
     console.log("result", result);
 
     const durationMs = Date.now() - startTime;
 
     await addCronJobLog({
-      jobId: 2,
+      jobId: 3,
       status: "success",
       responseText: JSON.stringify(result),
       durationMs,
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
     console.error(error);
 
     await addCronJobLog({
-      jobId: 2,
+      jobId: 3,
       status: "error",
       responseText: error instanceof Error ? error.message : "Unknown error",
       durationMs,
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json(
-      { success: false, message: "Failed to clear cart" },
+      { success: false, message: "Failed to update orders" },
       { status: 500 }
     );
   }

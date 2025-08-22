@@ -19,13 +19,13 @@ export type OrderItem = {
 export type Order = {
   id: number;
   userId: string;
-  orginalAmount: number;
+  originalAmount: number;
   totalAmount: number;
   discountAmount: number | null;
   shippingAmount: number | null;
   finalAmount: number;
-  status: string;
-  paymentMethod: string;
+  status: string | null;
+  paymentMethod?: string;
   addressId: number;
   createdAt: Date | null;
 };

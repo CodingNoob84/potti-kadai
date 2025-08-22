@@ -1,5 +1,3 @@
-"use client";
-
 import { ChooseUsSection } from "@/components/website/home/choose-us-section";
 import { FAQSection } from "@/components/website/home/faq-section";
 import { HeroSection } from "@/components/website/home/hero-section";

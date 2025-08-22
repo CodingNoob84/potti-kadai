@@ -1,7 +1,14 @@
 "use server";
 import { db } from "@/db/drizzle";
 import { user } from "@/db/schema/auth";
-import { cartItems, orderItems, orders } from "@/db/schema/cart";
+import {
+  cartItems,
+  orderItems,
+  orderPayments,
+  orders,
+  orderShipments,
+  orderStatusHistory,
+} from "@/db/schema/cart";
 import { colors, sizes } from "@/db/schema/category";
 import { products, productVariants } from "@/db/schema/products";
 import {
@@ -74,6 +81,126 @@ export const addToCart = async ({
 
   return { success: true };
 };
+
+export async function updateOrderStatus() {
+  let cancelledCount = 0;
+  let shippedCount = 0;
+  let deliveredCount = 0;
+
+  // --- Step 1: Move all shipped → delivered ---
+  const shippedOrders = await db
+    .select({
+      orderId: orders.id,
+    })
+    .from(orders)
+    .where(eq(orders.status, "shipped"));
+
+  if (shippedOrders.length > 0) {
+    for (const s of shippedOrders) {
+      await db
+        .update(orders)
+        .set({ status: "delivered" })
+        .where(eq(orders.id, s.orderId));
+
+      await db.insert(orderStatusHistory).values({
+        orderId: s.orderId,
+        status: "delivered",
+      });
+
+      await db
+        .update(orderShipments)
+        .set({
+          status: "delivered",
+        })
+        .where(eq(orderShipments.orderId, s.orderId));
+    }
+    deliveredCount += shippedOrders.length;
+  }
+
+  // --- Step 2: Handle pending orders ---
+  const pendingOrders = await db
+    .select({
+      orderId: orders.id,
+      userRole: user.role,
+    })
+    .from(orders)
+    .leftJoin(user, eq(orders.userId, user.id))
+    .where(eq(orders.status, "pending"));
+
+  if (pendingOrders.length > 0) {
+    const botOrders = pendingOrders.filter((o) => o.userRole === "userbots");
+    const nonBotOrders = pendingOrders.filter((o) => o.userRole !== "userbots");
+
+    // --- Bot orders ---
+    if (botOrders.length > 0) {
+      const shuffled = botOrders.sort(() => 0.5 - Math.random());
+      const cancelOrders = shuffled.slice(0, 2);
+      const shipOrders = shuffled.slice(2);
+
+      // Cancel 2 random
+      for (const o of cancelOrders) {
+        await db
+          .update(orders)
+          .set({ status: "cancelled" })
+          .where(eq(orders.id, o.orderId));
+
+        await db.insert(orderStatusHistory).values({
+          orderId: o.orderId,
+          status: "cancelled",
+        });
+      }
+      cancelledCount += cancelOrders.length;
+
+      // Ship the rest
+      for (const o of shipOrders) {
+        await db
+          .update(orders)
+          .set({ status: "shipped" })
+          .where(eq(orders.id, o.orderId));
+
+        await db.insert(orderStatusHistory).values({
+          orderId: o.orderId,
+          status: "shipped",
+        });
+        const trackingNumber = Math.floor(
+          10000000 + Math.random() * 90000000
+        ).toString();
+        await db.insert(orderShipments).values({
+          orderId: o.orderId,
+          status: "shipped",
+          carrier: "Thallu Vandi",
+          trackingNumber: trackingNumber,
+        });
+      }
+      shippedCount += shipOrders.length;
+    }
+
+    // --- Non-bot orders ---
+    for (const o of nonBotOrders) {
+      await db
+        .update(orders)
+        .set({ status: "shipped" })
+        .where(eq(orders.id, o.orderId));
+
+      await db.insert(orderStatusHistory).values({
+        orderId: o.orderId,
+        status: "shipped",
+      });
+      const trackingNumber = Math.floor(
+        10000000 + Math.random() * 90000000
+      ).toString();
+      await db.insert(orderShipments).values({
+        orderId: o.orderId,
+        status: "shipped",
+        carrier: "Thallu Vandi",
+        trackingNumber: trackingNumber,
+      });
+    }
+    shippedCount += nonBotOrders.length;
+  }
+
+  return { cancelledCount, shippedCount, deliveredCount };
+}
 
 export async function seedCartItems() {
   // get all userbots
@@ -235,14 +362,13 @@ export async function placeOrder({
     .insert(orders)
     .values({
       userId,
-      orginalAmount: originalAmount,
+      originalAmount: originalAmount,
       totalAmount,
       discountAmount,
       taxAmount,
       taxPercentage: TAX_PERCENTAGE,
       shippingAmount,
       finalAmount,
-      paymentMethod,
       addressId: addressId,
     })
     .returning();
@@ -259,6 +385,23 @@ export async function placeOrder({
   }));
 
   await db.insert(orderItems).values(finalOrderItems);
+
+  await db.insert(orderStatusHistory).values({
+    orderId: newOrder.id,
+    status: "pending",
+  });
+
+  await db.insert(orderShipments).values({
+    orderId: newOrder.id,
+    status: "pending",
+  });
+
+  await db.insert(orderPayments).values({
+    orderId: newOrder.id,
+    status: "pending",
+    paymentMethod: paymentMethod,
+    amount: finalAmount,
+  });
 
   // 6. Clear cart
   await db.delete(cartItems).where(eq(cartItems.userId, userId));

@@ -2,7 +2,15 @@
 // server/cart.ts
 import { db } from "@/db/drizzle";
 import { user } from "@/db/schema/auth";
-import { cartItems, orderItems, orders, shipments } from "@/db/schema/cart";
+import {
+  cartItems,
+  orderItems,
+  orderPayments,
+  orders,
+  orderShipments,
+  orderStatusHistory,
+  shipments,
+} from "@/db/schema/cart";
 import { colors, sizes } from "@/db/schema/category";
 
 import { productImages, products, productVariants } from "@/db/schema/products";
@@ -13,7 +21,15 @@ import {
   TAX_PERCENTAGE,
 } from "@/lib/contants";
 
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  isNotNull,
+  sql,
+} from "drizzle-orm";
 import {
   DiscountMapValue,
   fetchAllDiscounts,
@@ -416,14 +432,13 @@ export async function placeOrder({
     .insert(orders)
     .values({
       userId,
-      orginalAmount: originalAmount,
+      originalAmount,
       totalAmount,
       discountAmount,
       taxAmount,
       taxPercentage: TAX_PERCENTAGE,
       shippingAmount,
       finalAmount,
-      paymentMethod,
       addressId: addressId,
     })
     .returning();
@@ -440,6 +455,23 @@ export async function placeOrder({
   }));
 
   await db.insert(orderItems).values(finalOrderItems);
+
+  await db.insert(orderStatusHistory).values({
+    orderId: newOrder.id,
+    status: "pending",
+  });
+
+  await db.insert(orderShipments).values({
+    orderId: newOrder.id,
+    status: "pending",
+  });
+
+  await db.insert(orderPayments).values({
+    orderId: newOrder.id,
+    status: "pending",
+    paymentMethod: paymentMethod,
+    amount: finalAmount,
+  });
 
   // 6. Clear cart
   await db.delete(cartItems).where(eq(cartItems.userId, userId));
@@ -527,10 +559,13 @@ export async function getOrderDetails({ orderId }: { orderId: number }) {
   try {
     // Get the order
     const orderData = await db
-      .select()
+      .select({
+        ...getTableColumns(orders),
+        paymentMethod: orderPayments.paymentMethod,
+      })
       .from(orders)
+      .innerJoin(orderPayments, eq(orders.id, orderPayments.orderId))
       .where(eq(orders.id, orderId));
-
     if (!orderData.length) throw new Error("Order not found");
 
     const order = orderData[0];
@@ -613,15 +648,16 @@ export const getAllUserOrders = async (
   // 1. Get all orders for the user
   const rawOrders = await db
     .select({
-      id: orders.orderId, // uuid
-      orderNumber: orders.id, // serial ID
+      id: orders.orderId, // UUID
+      orderNumber: orders.id, // Serial ID
       date: orders.createdAt,
-      status: orders.status,
       total: orders.finalAmount,
-      paymentMethod: orders.paymentMethod,
+      paymentMethod: orderPayments.paymentMethod,
       addressId: orders.addressId,
+      status: orders.status, // We'll join the latest status
     })
     .from(orders)
+    .innerJoin(orderPayments, eq(orders.id, orderPayments.orderId))
     .where(eq(orders.userId, userId))
     .orderBy(desc(orders.createdAt))
     .limit(5);
@@ -737,7 +773,7 @@ export const getAllUserOrders = async (
       ).padStart(3, "0")}`,
       orderNumber: String(order.orderNumber),
       date: order.date ? order.date.toISOString().split("T")[0] : "",
-      status: order.status,
+      status: order.status as string,
       total: Number(order.total),
       items: orderItemsList,
       shippingAddress: {
@@ -758,47 +794,53 @@ export const getAllUserOrders = async (
 
 export async function clearAllCartItemsForAllUsers() {
   try {
-    // Start a transaction
-    await db.transaction(async (tx) => {
-      // 1. Fetch all cart items with their variant IDs and quantities
-      const allCartItems = await tx
-        .select({
-          productVariantId: cartItems.productVariantId,
-          quantity: cartItems.quantity,
+    let totalItems = 0;
+    let totalQuantity = 0;
+
+    // 1. Fetch all cart items with their variant IDs and quantities
+    const allCartItems = await db
+      .select({
+        productVariantId: cartItems.productVariantId,
+        quantity: cartItems.quantity,
+      })
+      .from(cartItems);
+
+    totalItems = allCartItems.length;
+
+    if (totalItems === 0) {
+      console.log("No cart items found to clear");
+      return;
+    }
+
+    // 2. Group quantities by variant ID for more efficient updates
+    const variantQuantities = new Map<number, number>();
+    for (const item of allCartItems) {
+      const current =
+        variantQuantities.get(item.productVariantId as number) || 0;
+      variantQuantities.set(item.productVariantId, current + item.quantity);
+      totalQuantity += item.quantity;
+    }
+
+    // 3. Update product variants in batch
+    for (const [variantId, quantity] of variantQuantities.entries()) {
+      await db
+        .update(productVariants)
+        .set({
+          quantity: sql`${productVariants.quantity} + ${quantity}`,
+          updatedAt: new Date(),
         })
-        .from(cartItems);
+        .where(eq(productVariants.id, variantId));
+    }
 
-      if (allCartItems.length === 0) {
-        console.log("No cart items found to clear");
-        return;
-      }
+    // 4. Delete all cart items
+    await db.delete(cartItems).where(isNotNull(cartItems.id));
 
-      // 2. Group quantities by variant ID for more efficient updates
-      const variantQuantities = new Map<number, number>();
-      for (const item of allCartItems) {
-        const current =
-          variantQuantities.get(item.productVariantId as number) || 0;
-        variantQuantities.set(item.productVariantId, current + item.quantity);
-      }
+    console.log(
+      `Successfully cleared ${totalItems} cart items and restored ${totalQuantity} units to stock`
+    );
 
-      // 3. Update product variants in batch
-      for (const [variantId, quantity] of variantQuantities.entries()) {
-        await tx
-          .update(productVariants)
-          .set({
-            quantity: sql`${productVariants.quantity} + ${quantity}`,
-            updatedAt: new Date(),
-          })
-          .where(eq(productVariants.id, variantId));
-      }
-
-      // 4. Delete all cart items
-      await tx.delete(cartItems).where(isNotNull(cartItems.id)); // More explicit than whereTrue()
-
-      console.log(
-        `Successfully cleared ${allCartItems.length} cart items and restored stock`
-      );
-    });
+    // Return counts
+    return { totalItems, totalQuantity };
   } catch (error) {
     console.error("Failed to clear cart items:", error);
     throw new Error("Failed to clear cart items. Changes were rolled back.");
@@ -815,15 +857,14 @@ export const getAllOrders = async ({
   try {
     const offset = (page - 1) * limit;
 
-    // Fetch orders with user details
     const rawOrders = await db
       .select({
         id: orders.orderId, // uuid
         orderNumber: orders.id, // serial ID
         date: orders.createdAt,
-        status: orders.status,
+        status: orders.status, // ✅ latest status instead of orders.status
         total: orders.finalAmount,
-        paymentMethod: orders.paymentMethod,
+        paymentMethod: orderPayments.paymentMethod,
         addressId: orders.addressId,
         userId: orders.userId,
         userName: user.name,
@@ -831,6 +872,7 @@ export const getAllOrders = async ({
       })
       .from(orders)
       .leftJoin(user, eq(orders.userId, user.id))
+      .innerJoin(orderPayments, eq(orders.id, orderPayments.orderId))
       .orderBy(desc(orders.createdAt))
       .limit(limit)
       .offset(offset);

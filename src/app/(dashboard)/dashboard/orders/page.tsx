@@ -230,7 +230,7 @@ export default function OrdersPage() {
                     <TableCell>{formatCurrency(order.total)}</TableCell>
                     <TableCell>
                       <Badge
-                        variant={getStatusBadgeVariant(order.status)}
+                        variant={getStatusBadgeVariant(order?.status ?? "")}
                         className="capitalize"
                       >
                         {order.status}
