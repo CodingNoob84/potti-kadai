@@ -52,9 +52,9 @@ function FilterContentComponent({
   setPriceRange,
 }: FilterContentProps) {
   return (
-    <div className="px-4 space-y-8">
+    <div className="px-4">
       {/* Gender */}
-      <div className="border-b border-gray-100 pb-2">
+      <div className="border-b border-gray-100 pb-1">
         <button
           className="flex items-center justify-between w-full font-semibold text-base py-2"
           onClick={() => toggleSection("gender")}

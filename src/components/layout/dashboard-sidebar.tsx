@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useState } from "react";
 
 type MenuSubItem = {
   title: string;
@@ -272,22 +272,26 @@ export default function AdminSidebar() {
   const [openMenus, setOpenMenus] = useState<string[]>([]);
 
   const toggleMenu = (title: string) => {
-    setOpenMenus(
-      (prev) =>
-        prev.includes(title) ? prev.filter((item) => item !== title) : [title] // Only keep the current menu open
-    );
+    setOpenMenus((prev) => {
+      // If the menu is already open, close it
+      if (prev.includes(title)) {
+        return prev.filter((item) => item !== title);
+      }
+      // Otherwise, close all other menus and open this one
+      return [title];
+    });
   };
 
   // Auto-open parent menu if child is active
-  useEffect(() => {
-    const activeParent = menuItems.find(
-      (item) =>
-        item.submenu && item.submenu.some((sub) => pathname === sub.href)
-    );
-    if (activeParent && !openMenus.includes(activeParent.title)) {
-      setOpenMenus([activeParent.title]);
-    }
-  }, [pathname, openMenus]);
+  // useEffect(() => {
+  //   const activeParent = menuItems.find(
+  //     (item) =>
+  //       item.submenu && item.submenu.some((sub) => pathname === sub.href)
+  //   );
+  //   if (activeParent && !openMenus.includes(activeParent.title)) {
+  //     setOpenMenus([activeParent.title]);
+  //   }
+  // }, [pathname, openMenus]);
 
   return (
     <>

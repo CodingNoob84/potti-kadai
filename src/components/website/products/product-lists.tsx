@@ -6,9 +6,17 @@ import { getBestDiscountValue, getDiscounts } from "@/lib/utils";
 import { getProductFilters } from "@/server/products";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Bell, Eye, Frown, Star } from "lucide-react";
+import {
+  Bell,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Frown,
+  Star,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 type ProductListsTypeProps = {
   viewMode: "grid" | "list";
@@ -20,6 +28,8 @@ type ProductListsTypeProps = {
   priceBelow: number;
 };
 
+const ITEMS_PER_PAGE = 12;
+
 const ProductSkeleton = ({ viewMode }: { viewMode: "grid" | "list" }) => {
   if (viewMode === "grid") {
     return (
@@ -28,7 +38,7 @@ const ProductSkeleton = ({ viewMode }: { viewMode: "grid" | "list" }) => {
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardContent className="p-0">
-                <div className="relative  aspect-square bg-gray-200 rounded-t-lg" />
+                <div className="relative aspect-square bg-gray-200 rounded-t-lg" />
                 <div className="p-4 space-y-3">
                   <div className="h-4 bg-gray-200 rounded w-3/4" />
                   <div className="h-4 bg-gray-200 rounded w-1/2" />
@@ -64,6 +74,97 @@ const ProductSkeleton = ({ viewMode }: { viewMode: "grid" | "list" }) => {
   );
 };
 
+const Pagination = ({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) => {
+  const maxVisiblePages = 5;
+  const halfVisible = Math.floor(maxVisiblePages / 2);
+
+  let startPage = Math.max(1, currentPage - halfVisible);
+  const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+
+  const pages = Array.from(
+    { length: endPage - startPage + 1 },
+    (_, i) => startPage + i
+  );
+
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-center space-x-2 mt-8">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="h-8 w-8 p-0"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+
+      {startPage > 1 && (
+        <>
+          <Button
+            variant={currentPage === 1 ? "default" : "outline"}
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => onPageChange(1)}
+          >
+            1
+          </Button>
+          {startPage > 2 && <span className="px-2">...</span>}
+        </>
+      )}
+
+      {pages.map((page) => (
+        <Button
+          key={page}
+          variant={currentPage === page ? "default" : "outline"}
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => onPageChange(page)}
+        >
+          {page}
+        </Button>
+      ))}
+
+      {endPage < totalPages && (
+        <>
+          {endPage < totalPages - 1 && <span className="px-2">...</span>}
+          <Button
+            variant={currentPage === totalPages ? "default" : "outline"}
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => onPageChange(totalPages)}
+          >
+            {totalPages}
+          </Button>
+        </>
+      )}
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="h-8 w-8 p-0"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+};
+
 export const ProductLists = ({
   viewMode = "grid",
   genderIds,
@@ -73,6 +174,20 @@ export const ProductLists = ({
   priceAbove,
   priceBelow,
 }: ProductListsTypeProps) => {
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    genderIds,
+    categoryIds,
+    subcategoryIds,
+    colorIds,
+    priceAbove,
+    priceBelow,
+  ]);
+
   const {
     data: totalproducts,
     isLoading,
@@ -87,6 +202,8 @@ export const ProductLists = ({
         colorIds: colorIds,
         priceAbove: priceAbove,
         priceBelow: priceBelow,
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
       },
     ],
     queryFn: ({ queryKey }) => {
@@ -99,20 +216,33 @@ export const ProductLists = ({
           colorIds: number[];
           priceAbove: number;
           priceBelow: number;
+          page: number;
+          limit: number;
         }
       ];
-      return getProductFilters(filters);
+      return getProductFilters({
+        ...filters,
+        pageNumber: filters.page,
+        limit: filters.limit,
+      });
     },
   });
 
-  //const isLoading = true;
+  console.log("total-products", totalproducts);
+
   if (isLoading) {
     return <ProductSkeleton viewMode={viewMode} />;
   }
 
-  //const totalRecords = totalproducts?.totalRecords;
   const products = totalproducts?.products;
-  console.log("data", totalproducts);
+  const totalRecords = totalproducts?.totalRecords || 0;
+  const totalPages = Math.ceil(totalRecords / ITEMS_PER_PAGE);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   if (error) {
     return (
@@ -129,7 +259,6 @@ export const ProductLists = ({
   }
 
   if (!products || products?.length === 0) {
-    console.log("datalength", products?.length);
     return (
       <div className="lg:col-span-3">
         <motion.div
@@ -159,19 +288,28 @@ export const ProductLists = ({
     );
   }
 
+  const currentProducts = products;
+
   return (
     <div className="lg:col-span-3">
+      {/* Results count */}
+      <div className="mb-6 flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} -{" "}
+          {Math.min(currentPage * ITEMS_PER_PAGE, totalRecords)} of{" "}
+          {totalRecords} products
+        </p>
+      </div>
+
       {viewMode === "grid" ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map((product, index) => {
+          {currentProducts.map((product, index) => {
             const { discountedPrice, discountedText } = getBestDiscountValue(
               product.discounts,
               product.price,
               1
             );
-            console.log("-->", discountedPrice, discountedText);
             const isDiscounted = discountedPrice !== product.price;
-            //const isWishlisted = wishlistItems.includes(product.id)
 
             return (
               <motion.div
@@ -194,7 +332,6 @@ export const ProductLists = ({
                         />
                       </Link>
 
-                      {/* Discount Badge */}
                       {isDiscounted && (
                         <motion.div
                           initial={{ scale: 0, rotate: -12 }}
@@ -211,7 +348,6 @@ export const ProductLists = ({
                         </motion.div>
                       )}
 
-                      {/* Quick Actions */}
                       <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         <Button
                           size="sm"
@@ -274,13 +410,12 @@ export const ProductLists = ({
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {products.map((product, index) => {
+          {currentProducts.map((product, index) => {
             const { discountedPrice, discountedText } = getDiscounts(
               product.discounts,
               product.price
             );
             const isDiscounted = discountedPrice !== product.price;
-            //const isWishlisted = wishlistItems.includes(product.id)
 
             return (
               <motion.div
@@ -363,6 +498,15 @@ export const ProductLists = ({
             );
           })}
         </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
       )}
     </div>
   );
